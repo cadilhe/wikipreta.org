@@ -1,0 +1,140 @@
+Resumo do Aplicativo:
+
+Vou resumir as principais características do aplicativo:
+
+1.Navegação Infinita : O aplicativo permite que os usuários cliquem em palavras destacadas em negrito para navegar para novos verbetes relacionados, criando uma experiência de exploração contínua.
+2.Arte e Cultura Visual : Para cada verbete, o aplicativo gera uma imagem única usando IA (Gemini/Imagen), trazendo uma representação artística do tema.
+3.Plataforma Colaborativa : Os usuários podem editar e melhorar os verbetes existentes ou criar novos, contribuindo para o acervo de conhecimento.
+4.Descoberta e Compartilhamento : Inclui funcionalidades como botão "Aleatório" para descobrir novos temas, histórico de leitura e opções para compartilhar verbetes.
+
+## Aspectos Técnicos
+- Desenvolvido com React e TypeScript
+- Utiliza a API Gemini da Google para:
+  - Gerar conteúdo textual sobre tópicos (gemini-2.5-flash)
+  - Criar imagens artísticas representativas (imagen-4.0-generate-001)
+- Armazena conteúdo localmente para acesso offline e rápido
+- Suporta temas claro e escuro
+- Inclui rastreamento de histórico de navegação
+- Permite compartilhamento via Web Share API
+O aplicativo tem uma abordagem educativa e cultural importante, focando na valorização da história e cultura negra do Brasil, África e diáspora africana, tornando esse conhecimento acessível e interativo.
+
+---
+
+## PROGRESSO (8 de dezembro de 2025 — Opção A: SQLite + Prisma)
+
+### ✅ Implementado Hoje
+
+**Banco de Dados & Schema**
+- ✅ Criado `prisma/schema.prisma` com tabelas `Topic` e `Revision`
+- ✅ Configurado SQLite via `DATABASE_URL="file:./prisma/dev.db"` em `.env.local`
+- ✅ Criado `server/db.js` para inicializar cliente Prisma com singleton pattern
+- ✅ Criado `server/utils.js` com funções `slugify()` e `generateImageFilename()`
+
+**Backend Refatorado (server/index.js)**
+- ✅ Adicionado integração Prisma para persistência
+- ✅ Endpoints Gemini com cache em DB (check antes de chamar API):
+  - `POST /api/gemini/content` — gera texto + auto-salva em DB (upsert)
+  - `POST /api/gemini/image` — gera imagem, salva em `server/uploads/`, retorna URL
+- ✅ CRUD endpoints implementados:
+  - `GET /api/topics` — listar com pagination + search
+  - `GET /api/topics/:slug` — buscar específico com últimas 5 revisions
+  - `POST /api/topics` — criar novo verbete
+  - `PUT /api/topics/:slug` — editar + auto-salvar revisão anterior
+- ✅ Lógica de revisions automática (tracking de edits)
+
+**Setup & Configuração**
+- ✅ Adicionado script `npm run setup:db` em `package.json` para setup automático
+- ✅ Criado `setup-db.sh` (shell script para referência manual)
+- ✅ Atualizado `.env.local` com `DATABASE_URL`
+- ✅ Atualizado `README.md` com instruções completas (Quick Start, API docs, testing)
+
+### 🎯 Próximo Passo: Executar Setup do Banco
+
+**Via Git Bash (recomendado):**
+```bash
+npm run setup:db
+```
+
+Isso vai:
+1. Instalar `@prisma/client` e `prisma`
+2. Gerar cliente Prisma
+3. Rodar migração e criar `prisma/dev.db`
+
+**Depois:**
+```bash
+npm run dev:all
+```
+
+Isso vai:
+- Servidor backend na porta 4000
+- Frontend Vite na porta 3000
+- Você pode testar gerando verbetes que serão persistidos no DB
+
+### 📊 Estrutura do Banco
+
+```sql
+Topic {
+  id: Int (primary key, auto-increment)
+  slug: String (unique) — usado em URLs e como chave de lookup
+  title: String
+  content: String — texto do verbete
+  highlights: Json[] — palavras em **bold** extraídas automaticamente
+  relatedTopics: Json[] — tópicos relacionados
+  imageUrl: String? — URL da imagem salva em /uploads
+  source: String — "gemini", "user", "mock"
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+Revision {
+  id: Int
+  topicId: Int (foreign key)
+  content: String — conteúdo anterior
+  editor: String? — quem editou
+  createdAt: DateTime
+}
+```
+
+### 🔄 Fluxo de Cache & Persistência
+
+1. **Primeiro acesso a um tópico:**
+   - Cliente chama `POST /api/gemini/content?topic=X`
+   - Backend verifica DB: existe slug normalizado?
+   - Se SIM (e source=gemini): retorna do DB (rápido, sem custo API)
+   - Se NÃO: chama Gemini, auto-salva em DB com `upsert`, retorna
+   - Imagem segue fluxo similar
+
+2. **Edição de verbete:**
+   - Cliente chama `PUT /api/topics/:slug` com novo conteúdo
+   - Backend salva revisão anterior automaticamente
+   - Atualiza DB
+   - Frontend mostra sucesso
+
+3. **Regeneração (opcionalmente):**
+   - Cliente chama `POST /api/topics/:slug/regen`
+   - Backend salva revisão anterior, chama Gemini, atualiza DB
+
+### 💡 Benefícios
+
+- **Reduz chamadas API Gemini:** Cache automático em DB
+- **Persistência:** Verbetes salvos mesmo após reiniciar servidor
+- **Versionamento:** Revisions permitem rollback/auditoria
+- **Imagens otimizadas:** Salvas em disco, servidas como URLs
+- **Modo mock:** Desenvolvimento sem API key (ainda funciona)
+
+### 📋 Checklist para Amanhã
+
+- [ ] Rodar `npm run setup:db` via Git Bash
+- [ ] Verificar que `prisma/dev.db` foi criado
+- [ ] Rodar `npm run dev:all`
+- [ ] Abrir http://localhost:3000
+- [ ] Testar: gerar novo verbete → deve salvar em DB → recarregar página → verbete persiste
+- [ ] Testar: editar verbete → revisão salva automaticamente
+- [ ] Testar: buscar verbete via API `GET /api/topics/kanimambo`
+- [ ] (Opcional) Implementar UI para listar/editar verbetes salvos no painel backend
+
+---
+
+
+
+
