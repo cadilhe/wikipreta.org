@@ -29,14 +29,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onRandom, isLoading }) 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Pesquisar"
-          className="w-full py-2 px-1 font-serif text-lg bg-transparent border-none outline-none disabled:text-gray-400 dark:disabled:text-gray-600 placeholder:text-black/60 dark:placeholder:text-white/60"
+          className="w-full py-2 px-1 font-serif text-lg bg-transparent border-none outline-none text-gray-900 dark:text-gray-100 disabled:text-gray-400 dark:disabled:text-gray-600 placeholder:text-black/60 dark:placeholder:text-white/60"
           aria-label="Pesquisar por um tópico"
           disabled={isLoading}
         />
       </form>
       <button 
         onClick={onRandom} 
-        className="py-2 px-0 font-bold whitespace-nowrap transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37] disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed disabled:hover:text-gray-400 dark:disabled:hover:text-gray-600" 
+        className="py-2 px-0 font-bold whitespace-nowrap transition-colors duration-200 text-gray-800 dark:text-gray-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37] disabled:text-gray-400 dark:disabled:text-gray-600" 
         disabled={isLoading}>
         Aleatório
       </button>

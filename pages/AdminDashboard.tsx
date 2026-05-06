@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 interface Topic {
-    id: number;
+    id: string;
     title: string;
     slug: string;
     source: string;
-    updatedAt: string;
+    updated_at: string;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -15,7 +15,7 @@ const AdminDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const { token, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -95,7 +95,7 @@ const AdminDashboard: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-sm text-stone-500 dark:text-stone-400">
-                                                {new Date(topic.updatedAt).toLocaleDateString('pt-BR')}
+                                                {new Date(topic.updated_at).toLocaleDateString('pt-BR')}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <button

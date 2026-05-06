@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import { supabase } from '../services/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
-    id: number;
+    id: string;
+    email: string;
     username: string;
     role: string;
 }
 
 interface AuthContextType {
     user: User | null;
-    token: string | null;
-    login: (token: string, user: User) => void;
-    logout: () => void;
+    session: any | null;
+    logout: () => Promise<void>;
     isAuthenticated: boolean;
 }
 
@@ -19,45 +20,47 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
+    const [session, setSession] = useState<any | null>(null);
 
     useEffect(() => {
-        // Check localStorage on mount
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-
-        if (storedToken && storedUser) {
-            try {
-                const decoded: any = jwtDecode(storedToken);
-                // Check expiration
-                if (decoded.exp * 1000 < Date.now()) {
-                    logout();
-                } else {
-                    setToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-                }
-            } catch (e) {
-                logout();
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session?.user) {
+                mapUser(session.user);
             }
-        }
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session?.user) {
+                mapUser(session.user);
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
-    const login = (newToken: string, newUser: User) => {
-        localStorage.setItem('token', newToken);
-        localStorage.setItem('user', JSON.stringify(newUser));
-        setToken(newToken);
-        setUser(newUser);
+    const mapUser = (supabaseUser: SupabaseUser) => {
+        setUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0],
+            role: supabaseUser.user_metadata?.role || 'editor'
+        });
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken(null);
+    const logout = async () => {
+        await supabase.auth.signOut();
         setUser(null);
+        setSession(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, session, logout, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );

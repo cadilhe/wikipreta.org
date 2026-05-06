@@ -4,13 +4,25 @@
  * @returns {string}
  */
 export const slugify = (text) => {
+  const articles = ['a', 'e', 'da', 'do', 'na', 'no'];
+  
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special chars
-    .replace(/[\s_]+/g, '-')   // Replace spaces and underscores with hyphens
-    .replace(/-+/g, '-')       // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
+    .normalize('NFD')
+    // Manual fixes for specific chars that NFD might not handle perfectly
+    .replace(/ç/g, 'c')
+    .replace(/æ/g, 'ae')
+    .replace(/œ/g, 'oe')
+    .replace(/ø/g, 'o')
+    .replace(/å/g, 'a')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accent markers
+    .replace(/[^\w\s-]/g, '') // Remove other special chars
+    .split(/[\s_]+/)
+    .filter(word => word.length > 0 && !articles.includes(word))
+    .join('-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 };
 
 /**

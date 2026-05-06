@@ -1,35 +1,35 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../services/supabase';
 
 const LoginPage: React.FC = () => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { login } = useAuth();
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:4000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
             });
 
-            const data = await response.json();
+            if (error) throw error;
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
+            if (data.session) {
+                navigate('/admin');
             }
-
-            login(data.token, data.user);
-            navigate('/');
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Falha no login. Verifique suas credenciais.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -46,12 +46,13 @@ const LoginPage: React.FC = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-stone-400 mb-1">Usuário</label>
+                        <label className="block text-sm font-medium text-stone-400 mb-1">E-mail</label>
                         <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-stone-100 focus:border-amber-500 focus:outline-none"
+                            placeholder="seu@email.com"
                             required
                         />
                     </div>

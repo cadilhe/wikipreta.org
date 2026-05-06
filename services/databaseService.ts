@@ -3,64 +3,93 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-const WIKIPRETA_DB_KEY = 'wikipreta_db';
+const API_URL = '/api';
 const WIKIPRETA_HISTORY_KEY = 'wikipreta_history';
 
 /**
- * Normalizes a topic string to be used as a key.
- * @param topic The topic to normalize.
- * @returns The normalized topic key.
+ * Normalizes a topic string to a URL-safe slug.
  */
-const normalizeKey = (topic: string): string => topic.trim().toLowerCase();
+const toSlug = (text: string): string => {
+  const articles = ['a', 'e', 'da', 'do', 'na', 'no'];
+  return text
+    .toLowerCase()
+    .trim()
+    .normalize('NFD') // Decompose accents
+    .replace(/ç/g, 'c')
+    .replace(/æ/g, 'ae')
+    .replace(/œ/g, 'oe')
+    .replace(/ø/g, 'o')
+    .replace(/å/g, 'a')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .split(/[\s_]+/)
+    .filter(word => word.length > 0 && !articles.includes(word))
+    .join('-')
+    .replace(/-+/g, '-')       // Multiple hyphens to one
+    .replace(/^-+|-+$/g, '');  // Trim hyphens
+};
 
 /**
- * Retrieves the entire topic database from localStorage.
- * @returns A record of topics and their content.
+ * Fetches topic data from the server (Supabase).
+ * @param topic The topic title or slug.
+ * @returns The topic object or null if not found.
  */
-const getDb = (): Record<string, string> => {
+export const getTopicContent = async (topic: string): Promise<any | null> => {
   try {
-    const dbString = localStorage.getItem(WIKIPRETA_DB_KEY);
-    return dbString ? JSON.parse(dbString) : {};
+    const slug = toSlug(topic);
+    const response = await fetch(`${API_URL}/topics/${slug}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Failed to fetch topic from server');
+    }
+    
+    return await response.json();
   } catch (error) {
-    console.error('Error reading database from localStorage:', error);
-    return {};
+    console.error('Error fetching topic from server:', error);
+    return null;
   }
 };
 
 /**
- * Saves the entire topic database to localStorage.
- * @param db The database object to save.
+ * Saves topic content to the server (Supabase).
  */
-const saveDb = (db: Record<string, string>): void => {
+export const saveTopicContent = async (topic: string, content: string, editorEmail?: string, imageUrl?: string): Promise<void> => {
   try {
-    localStorage.setItem(WIKIPRETA_DB_KEY, JSON.stringify(db));
-  } catch (error)
- {
-    console.error('Error saving database to localStorage:', error);
+    const slug = toSlug(topic);
+    
+    // Try to update first
+    let response = await fetch(`${API_URL}/topics/${slug}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        content,
+        editor_email: editorEmail || 'anonymous',
+        imageUrl
+      }),
+    });
+
+    // If it doesn't exist, create it
+    if (response.status === 404) {
+      response = await fetch(`${API_URL}/topics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          title: topic,
+          content,
+          source: 'user',
+          imageUrl
+        }),
+      });
+    }
+
+    if (!response.ok) {
+      throw new Error('Failed to save topic to server');
+    }
+  } catch (error) {
+    console.error('Error saving topic to server:', error);
+    throw error;
   }
-};
-
-/**
- * Fetches topic content from the localStorage.
- * @param topic The topic to fetch.
- * @returns The content or null if not found.
- */
-export const getTopicContent = async (topic: string): Promise<string | null> => {
-  const db = getDb();
-  const key = normalizeKey(topic);
-  return db[key] || null;
-};
-
-/**
- * Saves topic content to the localStorage.
- * @param topic The topic title.
- * @param content The topic content.
- */
-export const saveTopicContent = async (topic: string, content: string): Promise<void> => {
-  const db = getDb();
-  const key = normalizeKey(topic);
-  db[key] = content;
-  saveDb(db);
 };
 
 /**

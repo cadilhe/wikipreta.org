@@ -48,10 +48,12 @@ const AppContent: React.FC = () => {
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>('');
+  const [editedImageUrl, setEditedImageUrl] = useState<string>('');
   const [topicImage, setTopicImage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [history, setHistory] = useState<string[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [randomImages, setRandomImages] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       const storedTheme = localStorage.getItem('theme');
@@ -103,6 +105,22 @@ const AppContent: React.FC = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
+  // Fetch available random images on mount
+  useEffect(() => {
+    const loadRandomImages = async () => {
+      try {
+        const resp = await fetch('/api/random-images');
+        if (resp.ok) {
+          const list = await resp.json();
+          setRandomImages(list);
+        }
+      } catch (e) {
+        console.warn('Could not load random images list:', e);
+      }
+    };
+    loadRandomImages();
+  }, []);
+
   // Effect to fetch content when topic changes
   useEffect(() => {
     if (!currentTopic || currentPage !== 'home') return;
@@ -123,6 +141,13 @@ const AppContent: React.FC = () => {
       console.warn('Could not update browser history or GTM dataLayer:', e);
     }
 
+    // Helper to get a random image from the local assets
+    const getRandomImage = () => {
+      if (randomImages.length === 0) return '/assets/images/random/random1.png'; // Use one of the generated ones as fallback
+      const randomIndex = Math.floor(Math.random() * randomImages.length);
+      return `/assets/images/random/${randomImages[randomIndex]}`;
+    };
+
     const fetchContent = async () => {
       setIsLoading(true);
       setError(null);
@@ -131,22 +156,28 @@ const AppContent: React.FC = () => {
       setIsEditing(false);
 
       try {
-        // 1. Check local storage first
-        const contentFromDb = await getTopicContent(currentTopic);
-
-        if (contentFromDb) {
-          setContent(contentFromDb);
+        // 1. Check DB first (via server)
+        const topicData = await getTopicContent(currentTopic);
+        
+        if (topicData) {
+          setContent(topicData.content);
+          setTopicImage(topicData.image_url || getRandomImage());
+          setIsLoading(false); 
         } else {
-          // 2. If not in DB, generate it via Gemini API
+          // 2. If not in DB, generate content via AI
           const generatedContent = await generateTopicContent(currentTopic);
           if (generatedContent) {
             setContent(generatedContent);
-            // 3. Save the newly generated content to local storage
-            await saveTopicContent(currentTopic, generatedContent);
+            setTopicImage(getRandomImage());
+
+            // 3. Save the newly generated content - handle error silently
+            try {
+              await saveTopicContent(currentTopic, generatedContent);
+            } catch (saveError) {
+              console.warn('Could not save generated content to DB:', saveError);
+            }
           } else {
-            // Handle generation failure
             setError(`Não foi possível gerar conteúdo para "${currentTopic}". Verifique sua conexão ou tente novamente.`);
-            setContent('');
           }
         }
 
@@ -167,42 +198,6 @@ const AppContent: React.FC = () => {
     fetchContent();
 
   }, [currentTopic, currentPage]);
-
-  // Effect to generate an image after content has loaded
-  useEffect(() => {
-    if (currentPage !== 'home' || !currentTopic) {
-      setTopicImage(null);
-      return;
-    }
-
-    if (!isLoading && content.length > 0) {
-      let isCancelled = false;
-      const generateImage = async () => {
-        setIsImageLoading(true);
-        setTopicImage(null);
-        try {
-          const imageUrl = await generateImageForTopic(currentTopic);
-          if (!isCancelled) {
-            setTopicImage(imageUrl);
-          }
-        } catch (error) {
-          console.error("Failed to generate image:", error);
-          if (!isCancelled) {
-            setTopicImage(null);
-          }
-        } finally {
-          if (!isCancelled) {
-            setIsImageLoading(false);
-          }
-        }
-      };
-      generateImage();
-
-      return () => {
-        isCancelled = true;
-      };
-    }
-  }, [isLoading, currentTopic, content, currentPage]);
 
   const handleNavigate = (page: Page) => {
     window.scrollTo(0, 0);
@@ -288,21 +283,36 @@ const AppContent: React.FC = () => {
 
   const handleEdit = () => {
     setEditedContent(content);
+    // Only set editedImageUrl if the current image is not a local random one
+    if (topicImage && !topicImage.startsWith('/assets/images/random/')) {
+      setEditedImageUrl(topicImage);
+    } else {
+      setEditedImageUrl('');
+    }
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditedContent('');
+    setEditedImageUrl('');
   };
 
   const handleSaveEdit = async () => {
     if (editedContent.trim()) {
       const finalContent = editedContent.trim();
-      await saveTopicContent(currentTopic, finalContent);
+      const finalImageUrl = editedImageUrl.trim() || undefined;
+      
+      await saveTopicContent(currentTopic, finalContent, user?.email, finalImageUrl);
+      
       setContent(finalContent);
+      if (finalImageUrl) {
+        setTopicImage(finalImageUrl);
+      }
+      
       setIsEditing(false);
       setEditedContent('');
+      setEditedImageUrl('');
     }
   };
 
@@ -443,19 +453,66 @@ const AppContent: React.FC = () => {
 
               {content.length > 0 && (
                 isEditing ? (
-                  <div>
+                  <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Definição do Verbete
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.querySelector('textarea');
+                            if (!textarea) return;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const text = textarea.value;
+                            const before = text.substring(0, start);
+                            const selection = text.substring(start, end);
+                            const after = text.substring(end);
+                            const newText = `${before}**${selection || 'termo'}**${after}`;
+                            setEditedContent(newText);
+                            // Focus back
+                            setTimeout(() => {
+                              textarea.focus();
+                              textarea.setSelectionRange(start + 2, end + 2);
+                            }, 10);
+                          }}
+                          className="p-1 px-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold text-lg flex items-center gap-1 transition-colors"
+                          title="Negrito (Transforma em link)"
+                        >
+                          B
+                        </button>
+                      </div>
+                    </div>
+                    
                     <textarea
                       value={editedContent}
                       onChange={(e) => setEditedContent(e.target.value)}
-                      className="w-full h-64 p-2 border rounded-md bg-transparent border-gray-400 dark:border-gray-600 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none resize-y"
-                      aria-label="Editar definição"
+                      className="w-full h-64 p-4 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none resize-y mb-2 font-serif leading-relaxed"
+                      placeholder="Escreva a definição aqui..."
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 italic">
+                      Dica: Palavras entre **asteriscos duplos** (negrito) tornam-se links para outros verbetes automaticamente.
+                    </p>
+                    
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                      URL da Imagem (Opcional - Deixe em branco para imagem randômica)
+                    </label>
+                    <input
+                      type="text"
+                      value={editedImageUrl}
+                      onChange={(e) => setEditedImageUrl(e.target.value)}
+                      placeholder="https://exemplo.com/imagem.jpg"
+                      className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none mb-4"
+                    />
+
                     <div className="flex justify-end gap-4 mt-4">
                       <button onClick={handleCancelEdit} className="py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700">
                         Cancelar
                       </button>
-                      <button onClick={handleSaveEdit} className="py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black">
-                        Salvar
+                      <button onClick={handleSaveEdit} className="py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-bold">
+                        Salvar Alterações
                       </button>
                     </div>
                   </div>

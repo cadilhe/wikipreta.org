@@ -9,16 +9,28 @@
 // POST /api/gemini/content  -> { topic }
 // POST /api/gemini/image    -> { topic }
 
+import { supabase } from './supabase';
+
 /**
- * Request helper to call our backend API.
+ * Request helper to call our backend API with authentication.
  */
 const postJson = async (url: string, body: any) => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 
+      'Content-Type': 'application/json' 
+    };
+
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
+    
     if (!resp.ok) {
       const text = await resp.text();
       throw new Error(`Server responded ${resp.status}: ${text}`);
@@ -43,8 +55,8 @@ export const generateTopicContent = async (topic: string): Promise<string | null
 export const generateImageForTopic = async (topic: string): Promise<string | null> => {
   try {
     const data = await postJson('/api/gemini/image', { topic });
-    // Expecting { imageBase64: 'data:image/png;base64,...' }
-    return typeof data.imageBase64 === 'string' ? data.imageBase64 : null;
+    // Support both new Supabase URL and old base64 format
+    return data.imageUrl || data.imageBase64 || null;
   } catch (e) {
     console.error('generateImageForTopic errored:', e);
     return null;
