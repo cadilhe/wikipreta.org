@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "setup:db": "node ./server/db-init.js",
+    "setup:db": "node ./api/db-init.js",
     "dev": "vite",
-    "dev:server": "node --watch ./server/index.js",
+    "dev:server": "node --watch ./api/index.js",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview"

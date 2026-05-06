@@ -8,8 +8,12 @@ import { fileURLToPath } from 'url';
 import { supabase } from './supabase.js';
 import { slugify, generateImageFilename } from './utils.js';
 
-// Load environment from project-level .env.local (explicit)
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+// Load environment from project-level .env.local in dev
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+} else {
+  dotenv.config();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +47,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 const ai = !useMock ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+
+// ============= Health Check =============
+app.get('/api/ping', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    hasGemini: !!API_KEY,
+    hasDeepSeek: !!DEEPSEEK_API_KEY
+  });
+});
 
 // ============= Auth Endpoints =============
 
@@ -363,16 +378,32 @@ app.post('/api/gemini/image', async (req, res) => {
 // ============= CRUD Endpoints =============
 app.get('/api/random-images', (req, res) => {
   const randomImagesDir = path.join(__dirname, '..', 'public', 'assets', 'images', 'random');
+  const staticFallback = [
+    'hu-chen-60XLoOgwkfA-unsplash.jpg',
+    'ian-kiragu-GSh_PwsZsPQ-unsplash.jpg',
+    'ian-macharia-7k91OUDYAQ0-unsplash.jpg',
+    'james-wiseman-IebZAH6kaNw-unsplash.jpg',
+    'jeff-ackley-YwDo_HwORXs-unsplash.jpg',
+    'ninno-jackjr-CG6Gd__QIOY-unsplash.jpg',
+    'random1.png',
+    'random2.png',
+    'random3.png',
+    'random4.png',
+    'random5.png',
+    'seth-doyle-zf9_yiAekJs-unsplash.jpg'
+  ];
+
   try {
     if (!fs.existsSync(randomImagesDir)) {
-      return res.json([]);
+      console.log('Using static fallback for random images (Serverless environment)');
+      return res.json(staticFallback);
     }
     const files = fs.readdirSync(randomImagesDir)
       .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
-    res.json(files);
+    res.json(files.length > 0 ? files : staticFallback);
   } catch (error) {
     console.error('Error listing random images:', error);
-    res.status(500).json({ error: 'Failed to list images' });
+    res.json(staticFallback);
   }
 });
 
@@ -475,8 +506,11 @@ app.put('/api/topics/:slug', async (req, res) => {
 });
 
 // ============= Server Start =============
-app.listen(PORT, () => {
-  console.log(`✅ Wikipreta API server listening on http://localhost:${PORT}`);
-  console.log(`📊 Database: ${path.join(__dirname, '../prisma/dev.db')}`);
-  console.log(`🎭 Mock mode: ${useMock}`);
-});
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`✅ Wikipreta API server listening on http://localhost:${PORT}`);
+    console.log(`🎭 Mock mode: ${useMock}`);
+  });
+}
+
+export default app;
