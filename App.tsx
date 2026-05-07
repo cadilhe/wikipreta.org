@@ -40,7 +40,10 @@ declare global {
 
 const AppContent: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
-  const [currentTopic, setCurrentTopic] = useState<string>('Kanimambo');
+  const [currentTopic, setCurrentTopic] = useState<string>(() => {
+    const randomIndex = Math.floor(Math.random() * UNIQUE_WORDS.length);
+    return UNIQUE_WORDS[randomIndex];
+  });
   const [content, setContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,8 +98,9 @@ const AppContent: React.FC = () => {
         setCurrentTopic(decodeURIComponent(topicFromUrl));
       } catch (e) {
         console.error('Failed to decode URL topic parameter:', e);
-        // Fallback to a default topic if decoding fails
-        setCurrentTopic('Kanimambo');
+        // Fallback to a random topic if decoding fails
+        const randomIndex = Math.floor(Math.random() * UNIQUE_WORDS.length);
+        setCurrentTopic(UNIQUE_WORDS[randomIndex]);
       }
     }
   }, []);
