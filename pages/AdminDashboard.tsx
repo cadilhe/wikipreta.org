@@ -31,7 +31,7 @@ const AdminDashboard: React.FC = () => {
     const fetchTopics = async (pageNum: number) => {
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:4000/api/topics?page=${pageNum}&limit=20`);
+            const response = await fetch(`/api/topics?page=${pageNum}&limit=20`);
             const data = await response.json();
             setTopics(data.topics);
             setTotalPages(data.pagination.pages);
@@ -53,7 +53,7 @@ const AdminDashboard: React.FC = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:4000/api/topics/${slug}`, {
+            const response = await fetch(`/api/topics/${slug}`, {
                 method: 'DELETE',
             });
 
