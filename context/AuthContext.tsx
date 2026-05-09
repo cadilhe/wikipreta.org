@@ -14,6 +14,7 @@ interface AuthContextType {
     session: any | null;
     logout: () => Promise<void>;
     isAuthenticated: boolean;
+    loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<any | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Get initial session
@@ -29,6 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (session?.user) {
                 mapUser(session.user);
             }
+            setLoading(false);
         });
 
         // Listen for auth changes
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 setUser(null);
             }
+            setLoading(false);
         });
 
         return () => subscription.unsubscribe();
@@ -60,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, session, logout, isAuthenticated: !!user, loading }}>
             {children}
         </AuthContext.Provider>
     );

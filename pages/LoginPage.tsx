@@ -34,48 +34,68 @@ const LoginPage: React.FC = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-stone-900 text-stone-100">
-            <div className="bg-stone-800 p-8 rounded-lg shadow-xl w-full max-w-md border border-stone-700">
-                <h2 className="text-3xl font-serif font-bold text-amber-500 mb-6 text-center">Entrar</h2>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#FAF8F2] text-[#2C2C2C] p-6">
+            <div className="mb-10 text-center animate-fade-in">
+                <h1 className="text-5xl font-serif font-bold text-[#B8860B] mb-2 tracking-tighter">wikipreta.org</h1>
+                <p className="text-stone-500 font-serif italic text-lg">Memória e História Viva</p>
+            </div>
+
+            <div className="bg-white p-10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] w-full max-w-md border border-stone-100">
+                <h2 className="text-2xl font-serif font-bold text-stone-800 mb-8 text-center">Acesso à Curadoria</h2>
 
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-4 text-sm">
-                        {error}
+                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-6 text-sm shadow-sm animate-shake">
+                        <p className="font-bold">Erro de Autenticação</p>
+                        <p>{error}</p>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-stone-400 mb-1">E-mail</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">E-mail</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-stone-100 focus:border-amber-500 focus:outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-800 focus:ring-2 focus:ring-amber-200 focus:border-amber-500 focus:outline-none transition-all"
                             placeholder="seu@email.com"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-stone-400 mb-1">Senha</label>
+                        <label className="block text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Senha</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-stone-100 focus:border-amber-500 focus:outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-800 focus:ring-2 focus:ring-amber-200 focus:border-amber-500 focus:outline-none transition-all"
                             required
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                        disabled={loading}
+                        className="w-full bg-stone-800 hover:bg-stone-950 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Entrar
+                        {loading ? 'Autenticando...' : 'Entrar no Sistema'}
                     </button>
                 </form>
+                
+                <div className="mt-8 pt-6 border-top border-stone-100 text-center">
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="text-stone-400 hover:text-amber-600 text-sm transition-colors"
+                    >
+                        &larr; Voltar para a Enciclopédia
+                    </button>
+                </div>
             </div>
+            
+            <p className="mt-12 text-stone-400 text-xs font-serif italic">
+                © 2026 WikiPreta.org - Preservando a ancestralidade digital.
+            </p>
         </div>
     );
 };

@@ -1,243 +1,306 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A Wikipreta.org é uma plataforma digital colaborativa, em formato de enciclopédia, que registre biografias, acontecimentos, movimentos sociais, culturais e políticos ligados à população negra. Tem como objetivo valorizar e difundir a história preta do Brasil, da África e da diáspora, combater o apagamento histórico e ampliar as referências para futuras gerações." />
-    <title>Wikipreta.org</title>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
-    <!-- End Google Tag Manager -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-      @keyframes blink {
-        from, to { opacity: 1 }
-        50% { opacity: 0; }
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="A Wikipreta.org é uma plataforma digital colaborativa, em formato de enciclopédia, que registre biografias, acontecimentos, movimentos sociais, culturais e políticos ligados à população negra. Tem como objetivo valorizar e difundir a história preta do Brasil, da África e da diáspora, combater o apagamento histórico e ampliar as referências para futuras gerações." />
+  <title>Wikipreta.org</title>
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-XXXXXXX');</script>
+  <!-- End Google Tag Manager -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Lora:wght@400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    @keyframes blink {
+
+      from,
+      to {
+        opacity: 1
       }
 
-      html.dark {
-        color-scheme: dark;
-      }
-
-      body {
-        background-color: #FAF8F2; /* Almond/Off-white */
-        color: #2C2C2C; /* Dark, warm gray */
-        font-family: 'Lato', sans-serif;
-        font-size: 1.1rem;
-        line-height: 1.7;
-        margin: 0;
-        padding: 2rem 2rem 5rem 2rem;
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-      .dark body {
-        background-color: #2C2C2C;
-        color: #FAF8F2;
-      }
-
-      #root {
-        max-width: 65ch;
-        margin: auto;
-      }
-      h1, h2, h3, h4, h5, h6 {
-        font-family: 'Lora', serif;
-        font-size: 1em;
-        margin: 0;
-        font-weight: 700; /* Bolder for headings */
-      }
-      button {
-        background: none;
-        border: none;
-        padding: 0;
-        font: inherit;
-        color: inherit;
-        cursor: pointer;
-      }
-      .interactive-word {
-        color: #2C2C2C;
-        text-decoration: none;
-        transition: color 0.2s ease-in-out;
-        font-weight: bold;
-      }
-      .dark .interactive-word {
-        color: #FAF8F2;
-      }
-      .interactive-word:hover {
-        color: #B8860B; /* DarkGoldenRod */
-        text-decoration: underline;
-      }
-      .dark .interactive-word:hover {
-        color: #D4AF37; /* Brighter gold */
-      }
-      .footer-text {
-        font-size: 0.9em;
-        color: #555;
-      }
-      .dark .footer-text {
-        color: #aaa;
-      }
-      .footer-text a {
-        color: inherit;
-        text-decoration: none;
-        transition: color 0.2s ease-in-out;
-      }
-      .footer-text a:hover {
-        color: #B8860B;
-        text-decoration: underline;
-      }
-      .dark .footer-text a:hover {
-        color: #D4AF37;
-      }
-      .blinking-cursor {
-        animation: blink 1s step-end infinite;
-        color: #B8860B;
-      }
-      .dark .blinking-cursor {
-        color: #D4AF37;
-      }
-      
-      .theme-switcher {
-        transition: color 0.2s ease-in-out;
-      }
-      .theme-switcher:hover {
-        color: #B8860B;
-      }
-      .dark .theme-switcher:hover {
-        color: #D4AF37;
-      }
-
-      .sticky-footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        text-align: center;
-        padding: 1.5rem 0;
-        background-color: #FAF8F2;
-        border-top: 1px solid #e0e0e0;
-        transition: background-color 0.3s ease, border-color 0.3s ease;
-      }
-      .dark .sticky-footer {
-        background-color: #2C2C2C;
-        border-top-color: #444;
-      }
-
-      /* History Panel Styles */
-      .history-panel-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 50;
-        pointer-events: none;
+      50% {
         opacity: 0;
-        transition: opacity 0.3s ease;
       }
-      .history-panel-container.open {
-        pointer-events: auto;
-        opacity: 1;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
-      .history-backdrop {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-      }
-      .history-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        max-width: 320px;
-        background-color: #FAF8F2; /* Almond/Off-white */
-        display: flex;
-        flex-direction: column;
-        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-      }
-      .dark .history-panel {
-        background-color: #2C2C2C;
-      }
-      .history-panel-container.open .history-panel {
-        transform: translateX(0);
-      }
-      .history-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid #e0e0e0;
-      }
-      .dark .history-header {
-        border-bottom-color: #444;
-      }
-      .history-content {
-        flex-grow: 1;
-        overflow-y: auto;
-      }
-      .history-content ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .history-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        padding: 0.75rem 1.5rem;
-        border-bottom: 1px solid #e0e0e0;
-        transition: background-color 0.2s ease;
-      }
-      .dark .history-item {
-        border-bottom-color: #444;
-      }
-      .history-item:hover {
-        background-color: #f0ede6;
-      }
-      .dark .history-item:hover {
-        background-color: #3a3a3a;
-      }
-      .history-footer {
-        padding: 1rem 1.5rem;
-        border-top: 1px solid #e0e0e0;
-      }
-      .dark .history-footer {
-        border-top-color: #444;
-      }
-      .clear-history-button {
-        width: 100%;
-        padding: 0.75rem;
-        border-radius: 6px;
-        background-color: #e0e0e0;
-        font-weight: bold;
-        transition: background-color 0.2s ease;
-      }
-      .dark .clear-history-button {
-        background-color: #444;
-      }
-      .clear-history-button:hover {
-        background-color: #d4d4d4;
-      }
-      .dark .clear-history-button:hover {
-        background-color: #555;
-      }
-    </style>
+    }
+
+    html.dark {
+      color-scheme: dark;
+    }
+
+    body {
+      background-color: #FAF8F2;
+      /* Almond/Off-white */
+      color: #2C2C2C;
+      /* Dark, warm gray */
+      font-family: 'Lato', sans-serif;
+      font-size: 1.1rem;
+      line-height: 1.7;
+      margin: 0;
+      padding: 2rem 2rem 5rem 2rem;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .dark body {
+      background-color: #2C2C2C;
+      color: #FAF8F2;
+    }
+
+    #root {
+      max-width: 65ch;
+      margin: auto;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: 'Lora', serif;
+      font-size: 1em;
+      margin: 0;
+      font-weight: 700;
+      /* Bolder for headings */
+    }
+
+    button {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .interactive-word {
+      color: #2C2C2C;
+      text-decoration: none;
+      transition: color 0.2s ease-in-out;
+      font-weight: bold;
+    }
+
+    .dark .interactive-word {
+      color: #FAF8F2;
+    }
+
+    .interactive-word:hover {
+      color: #B8860B;
+      /* DarkGoldenRod */
+      text-decoration: underline;
+    }
+
+    .dark .interactive-word:hover {
+      color: #D4AF37;
+      /* Brighter gold */
+    }
+
+    .footer-text {
+      font-size: 0.9em;
+      color: #555;
+    }
+
+    .dark .footer-text {
+      color: #aaa;
+    }
+
+    .footer-text a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.2s ease-in-out;
+    }
+
+    .footer-text a:hover {
+      color: #B8860B;
+      text-decoration: underline;
+    }
+
+    .dark .footer-text a:hover {
+      color: #D4AF37;
+    }
+
+    .blinking-cursor {
+      animation: blink 1s step-end infinite;
+      color: #B8860B;
+    }
+
+    .dark .blinking-cursor {
+      color: #D4AF37;
+    }
+
+    .theme-switcher {
+      transition: color 0.2s ease-in-out;
+    }
+
+    .theme-switcher:hover {
+      color: #B8860B;
+    }
+
+    .dark .theme-switcher:hover {
+      color: #D4AF37;
+    }
+
+    .sticky-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      text-align: center;
+      padding: 1.5rem 0;
+      background-color: #FAF8F2;
+      border-top: 1px solid #e0e0e0;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    .dark .sticky-footer {
+      background-color: #2C2C2C;
+      border-top-color: #444;
+    }
+
+    /* History Panel Styles */
+    .history-panel-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .history-panel-container.open {
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    .history-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .history-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      max-width: 320px;
+      background-color: #FAF8F2;
+      /* Almond/Off-white */
+      display: flex;
+      flex-direction: column;
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .dark .history-panel {
+      background-color: #2C2C2C;
+    }
+
+    .history-panel-container.open .history-panel {
+      transform: translateX(0);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .dark .history-header {
+      border-bottom-color: #444;
+    }
+
+    .history-content {
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    .history-content ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .history-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+      transition: background-color 0.2s ease;
+    }
+
+    .dark .history-item {
+      border-bottom-color: #444;
+    }
+
+    .history-item:hover {
+      background-color: #f0ede6;
+    }
+
+    .dark .history-item:hover {
+      background-color: #3a3a3a;
+    }
+
+    .history-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .dark .history-footer {
+      border-top-color: #444;
+    }
+
+    .clear-history-button {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 6px;
+      background-color: #e0e0e0;
+      font-weight: bold;
+      transition: background-color 0.2s ease;
+    }
+
+    .dark .clear-history-button {
+      background-color: #444;
+    }
+
+    .clear-history-button:hover {
+      background-color: #d4d4d4;
+    }
+
+    .dark .clear-history-button:hover {
+      background-color: #555;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -248,14 +311,16 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TFMJVQH7" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

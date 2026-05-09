@@ -15,6 +15,7 @@ import { generateImageForTopic, generateTopicContent } from './services/geminiSe
 // --- Components ---
 
 import { getTopicContent, saveTopicContent, getHistory, addToHistory, clearHistory } from './services/databaseService';
+import { supabase } from './services/supabase';
 import ContentDisplay from './components/ContentDisplay';
 import SearchBar from './components/SearchBar';
 import LoadingSkeleton from './components/LoadingSkeleton';
@@ -40,7 +41,17 @@ declare global {
 
 const AppContent: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [currentTopic, setCurrentTopic] = useState<string>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const topicFromUrl = urlParams.get('topic');
+    if (topicFromUrl) {
+      try {
+        return decodeURIComponent(topicFromUrl);
+      } catch (e) {
+        console.error('Failed to decode URL topic parameter:', e);
+      }
+    }
     const randomIndex = Math.floor(Math.random() * UNIQUE_WORDS.length);
     return UNIQUE_WORDS[randomIndex];
   });
@@ -49,13 +60,17 @@ const AppContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isCopied, setIsCopied] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('edit') === 'true';
+  });
   const [editedContent, setEditedContent] = useState<string>('');
   const [editedImageUrl, setEditedImageUrl] = useState<string>('');
   const [topicImage, setTopicImage] = useState<string | null>(null);
   const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
   const [history, setHistory] = useState<string[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
   const [randomImages, setRandomImages] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -89,21 +104,6 @@ const AppContent: React.FC = () => {
     setHistory(getHistory());
   }, []);
 
-  // Effect to read topic from URL on initial load
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const topicFromUrl = urlParams.get('topic');
-    if (topicFromUrl) {
-      try {
-        setCurrentTopic(decodeURIComponent(topicFromUrl));
-      } catch (e) {
-        console.error('Failed to decode URL topic parameter:', e);
-        // Fallback to a random topic if decoding fails
-        const randomIndex = Math.floor(Math.random() * UNIQUE_WORDS.length);
-        setCurrentTopic(UNIQUE_WORDS[randomIndex]);
-      }
-    }
-  }, []);
 
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -157,7 +157,11 @@ const AppContent: React.FC = () => {
       setError(null);
       setContent('');
       setTopicImage(null);
-      setIsEditing(false);
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('edit') !== 'true') {
+        setIsEditing(false);
+      }
 
       try {
         // 1. Check DB first (via server)
@@ -322,6 +326,42 @@ const AppContent: React.FC = () => {
 
   const toggleHistory = () => {
     setIsHistoryOpen(prev => !prev);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione apenas arquivos de imagem.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentTopic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('verbetes-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('verbetes-images')
+        .getPublicUrl(filePath);
+
+      setEditedImageUrl(publicUrl);
+    } catch (err: any) {
+      console.error('Erro no upload:', err);
+      alert('Falha ao enviar imagem: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleHistoryClick = (topic: string) => {
@@ -501,15 +541,28 @@ const AppContent: React.FC = () => {
                     </p>
                     
                     <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                      URL da Imagem (Opcional - Deixe em branco para imagem randômica)
+                      Imagem do Verbete
                     </label>
-                    <input
-                      type="text"
-                      value={editedImageUrl}
-                      onChange={(e) => setEditedImageUrl(e.target.value)}
-                      placeholder="https://exemplo.com/imagem.jpg"
-                      className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none mb-4"
-                    />
+                    <div className="flex gap-2 mb-4">
+                      <input
+                        type="text"
+                        value={editedImageUrl}
+                        onChange={(e) => setEditedImageUrl(e.target.value)}
+                        placeholder="URL da imagem ou faça upload..."
+                        className="flex-1 p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none"
+                      />
+                      <label className={`cursor-pointer p-2 px-3 rounded-md border border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-100 ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        {isUploadingImage ? 'Enviando...' : 'Upload'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploadingImage}
+                        />
+                      </label>
+                    </div>
 
                     <div className="flex justify-end gap-4 mt-4">
                       <button onClick={handleCancelEdit} className="py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700">
@@ -587,22 +640,22 @@ const AppContent: React.FC = () => {
                 )}
               </React.Fragment>
             ))}
-            <li>
-              {isAuthenticated ? (
-                <>
-                  <button onClick={() => window.location.href = '/admin'} className="mr-3 px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                    Admin
+              <li>
+                {isAuthenticated ? (
+                  <>
+                    <button onClick={() => navigate('/admin')} className="mr-3 px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                      Admin
+                    </button>
+                    <button onClick={logout} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                      Sair ({user?.username})
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => navigate('/login')} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                    Login
                   </button>
-                  <button onClick={logout} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                    Sair ({user?.username})
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => window.location.href = '/login'} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                  Login
-                </button>
-              )}
-            </li>
+                )}
+              </li>
           </ul>
         </nav>
         <p className="footer-text" style={{ margin: 0 }}>

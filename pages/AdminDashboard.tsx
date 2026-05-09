@@ -15,16 +15,18 @@ const AdminDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (authLoading) return;
+
         if (!isAuthenticated) {
             navigate('/login');
             return;
         }
         fetchTopics(page);
-    }, [isAuthenticated, page, navigate]);
+    }, [isAuthenticated, authLoading, page, navigate]);
 
     const fetchTopics = async (pageNum: number) => {
         setLoading(true);
@@ -41,13 +43,37 @@ const AdminDashboard: React.FC = () => {
     };
 
     const handleEdit = (topicName: string) => {
-        // Navigate to home with topic selected
-        navigate(`/?topic=${encodeURIComponent(topicName)}`);
+        // Navigate to home with topic selected and edit mode active
+        navigate(`/?topic=${encodeURIComponent(topicName)}&edit=true`);
+    };
+
+    const handleDelete = async (slug: string, title: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir o verbete "${title}"? Esta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/topics/${slug}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                // Remove from local state
+                setTopics(topics.filter(t => t.slug !== slug));
+                alert('Verbete excluído com sucesso.');
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Erro ao excluir');
+            }
+        } catch (error: any) {
+            console.error('Failed to delete topic:', error);
+            alert(`Erro: ${error.message}`);
+        }
     };
 
     return (
         <div className="min-h-screen bg-stone-100 dark:bg-stone-900 text-stone-900 dark:text-stone-100 p-8">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-5xl mx-auto">
                 <header className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-serif font-bold text-amber-600 dark:text-amber-500">
                         Painel Administrativo
@@ -69,13 +95,13 @@ const AdminDashboard: React.FC = () => {
                                     <th className="p-4 font-semibold">Título</th>
                                     <th className="p-4 font-semibold">Fonte</th>
                                     <th className="p-4 font-semibold">Atualizado em</th>
-                                    <th className="p-4 font-semibold text-right">Ações</th>
+                                    <th className="p-4 font-semibold text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-200 dark:divide-stone-700">
-                                {loading ? (
+                                {authLoading || loading ? (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-stone-500">Carregando...</td>
+                                        <td colSpan={5} className="p-8 text-center text-stone-500 italic">Validando acesso...</td>
                                     </tr>
                                 ) : topics.length === 0 ? (
                                     <tr>
@@ -84,12 +110,14 @@ const AdminDashboard: React.FC = () => {
                                 ) : (
                                     topics.map((topic) => (
                                         <tr key={topic.id} className="hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors">
-                                            <td className="p-4 text-stone-500 dark:text-stone-400 font-mono text-sm">#{topic.id}</td>
+                                            <td className="p-4 text-stone-500 dark:text-stone-400 font-mono text-xs">#{topic.id.substring(0, 8)}...</td>
                                             <td className="p-4 font-medium">{topic.title}</td>
                                             <td className="p-4">
-                                                <span className={`text-xs px-2 py-1 rounded-full ${topic.source === 'gemini'
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${topic.source === 'gemini'
                                                         ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-                                                        : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                                        : topic.source === 'deepseek'
+                                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                                                            : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                                                     }`}>
                                                     {topic.source}
                                                 </span>
@@ -97,13 +125,21 @@ const AdminDashboard: React.FC = () => {
                                             <td className="p-4 text-sm text-stone-500 dark:text-stone-400">
                                                 {new Date(topic.updated_at).toLocaleDateString('pt-BR')}
                                             </td>
-                                            <td className="p-4 text-right">
-                                                <button
-                                                    onClick={() => handleEdit(topic.title)}
-                                                    className="mr-2 text-amber-600 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-300 font-medium text-sm"
-                                                >
-                                                    Editar
-                                                </button>
+                                            <td className="p-4 text-center">
+                                                <div className="flex justify-center gap-3">
+                                                    <button
+                                                        onClick={() => handleEdit(topic.title)}
+                                                        className="text-amber-600 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-300 font-bold text-xs uppercase tracking-tighter"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(topic.slug, topic.title)}
+                                                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-bold text-xs uppercase tracking-tighter"
+                                                    >
+                                                        Excluir
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

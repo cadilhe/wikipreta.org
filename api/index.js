@@ -1,12 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { supabase } from './supabase.js';
-import { slugify, generateImageFilename } from './utils.js';
+import { slugify, generateImageFilename, isBanned } from './utils.js';
 
 // Load environment from project-level .env.local in dev
 if (process.env.NODE_ENV !== 'production') {
@@ -46,7 +46,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-const ai = !useMock ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+const ai = !useMock ? new GoogleGenerativeAI(API_KEY) : null;
 
 // ============= Health Check =============
 app.get('/api/ping', (req, res) => {
@@ -182,10 +182,67 @@ async function generateWithOllama(prompt) {
   }
 }
 
+async function getContextFromKnowledge(topic) {
+  const OLLAMA_LOCAL = 'http://127.0.0.1:11434';
+  
+  try {
+    let embedding;
+    // Tenta primeiro o endpoint universal (mais estável)
+    const res1 = await fetch(`${OLLAMA_LOCAL}/api/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'nomic-embed-text', prompt: topic })
+    });
+    
+    if (res1.ok) {
+      const data = await res1.json();
+      embedding = data.embedding;
+    } else {
+      // Fallback para o endpoint novo
+      const res2 = await fetch(`${OLLAMA_LOCAL}/api/embed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'nomic-embed-text', input: topic })
+      });
+      if (!res2.ok) throw new Error("Falha ao gerar embedding");
+      const data = await res2.json();
+      embedding = data.embeddings[0];
+    }
+
+    // 2. Busca no Supabase via RPC 'match_knowledge'
+    const { data: documents, error } = await supabase.rpc('match_knowledge', {
+      query_embedding: embedding,
+      match_threshold: 0.35,
+      match_count: 5,
+    });
+
+    if (error) {
+      console.error("Erro na busca vetorial:", error.message);
+      return "";
+    }
+    
+    if (!documents || documents.length === 0) {
+      console.log(`ℹ️ Nenhum fragmento de conhecimento encontrado para: "${topic}" (Threshold: 0.35)`);
+      return "";
+    }
+
+    console.log(`✅ Encontrados ${documents.length} fragmentos de conhecimento para: "${topic}"`);
+
+    return documents.map(d => `[Fonte: ${d.metadata?.source || 'Documento'}]\n${d.content}`).join('\n\n---\n\n');
+  } catch (e) {
+    console.error("Erro ao buscar contexto de conhecimento:", e);
+    return "";
+  }
+}
+
 // ============= Gemini API Proxies =============
 app.post('/api/gemini/content', async (req, res) => {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Missing topic' });
+
+  if (isBanned(topic)) {
+    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
+  }
 
   // Check DB first
   const slug = slugify(topic);
@@ -202,22 +259,24 @@ app.post('/api/gemini/content', async (req, res) => {
     });
   }
 
-  if (useMock) {
-    const mockText = `Uma breve descrição de ${topic} destacando figuras como **Zumbi dos Palmares** e conceitos como **Quilombo**. Este texto é um mock local.`;
-    const highlights = ['Zumbi dos Palmares', 'Quilombo'];
-    const related = ['Zumbi dos Palmares', 'Quilombo', 'Capoeira'];
-    return res.json({
-      text: mockText,
-      highlights,
-      relatedTopics: related,
-      generatedAt: new Date().toISOString(),
-      source: 'mock',
-    });
-  }
+  // 1. Busca contexto nos documentos próprios (RAG)
+  const knowledgeContext = await getContextFromKnowledge(topic);
 
-  if (!ai) return res.status(500).json({ error: 'AI client not initialized' });
+  if (!ai && !DEEPSEEK_API_KEY && !PREFER_OLLAMA) return res.status(500).json({ error: 'AI client not initialized' });
 
-  const prompt = `Forneça uma biografia ou descrição enciclopédica concisa, em um único parágrafo, sobre "${topic}" no contexto da história e cultura negra do Brasil, da África ou da diáspora. O texto deve ser informativo, direto e respeitoso. Destaque outras personalidades, lugares ou conceitos relevantes envolvendo-os com dois asteriscos (ex: **Zumbi dos Palmares** ou **Quilombo**). Não inclua o nome do tópico no início do parágrafo.`;
+  // 2. Constrói o prompt priorizando as fontes oficiais
+  const prompt = knowledgeContext 
+    ? `Você é um historiador especialista da WikiPreta. Use as referências oficiais abaixo para compor sua resposta.
+    
+    FONTES OFICIAIS (CONTEXTO):
+    ${knowledgeContext}
+    
+    TAREFA:
+    Escreva um parágrafo enciclopédico e educativo sobre "${topic}" baseando-se prioritariamente nas fontes acima. 
+    Se a informação não estiver nas fontes, use seu conhecimento base de forma complementar.
+    Mantenha o tom respeitoso e focado na cultura negra.
+    Destaque termos importantes com dois asteriscos (ex: **Zumbi dos Palmares**).`
+    : `Forneça uma biografia ou descrição enciclopédica concisa, em um único parágrafo, sobre "${topic}" no contexto da história e cultura negra do Brasil, da África ou da diáspora. O texto deve ser informativo, direto e respeitoso. Destaque outras personalidades, lugares ou conceitos relevantes envolvendo-os com dois asteriscos (ex: **Zumbi dos Palmares** ou **Quilombo**). Não inclua o nome do tópico no início do parágrafo.`;
 
   try {
     let generatedText = null;
@@ -236,11 +295,9 @@ app.post('/api/gemini/content', async (req, res) => {
     if (!generatedText && ai) {
       try {
         console.log('Using Gemini (1.5 Flash) as backup...');
-        const response = await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        });
-        generatedText = response.text?.trim() || response.response?.text()?.trim();
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const response = await model.generateContent(prompt);
+        generatedText = response.response.text().trim();
         source = 'gemini';
         console.log('Successfully generated with Gemini');
       } catch (geminiError) {
@@ -285,6 +342,10 @@ app.post('/api/gemini/content', async (req, res) => {
 app.post('/api/gemini/image', async (req, res) => {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Missing topic' });
+
+  if (isBanned(topic)) {
+    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
+  }
 
   // Check DB first for cached image
   const slug = slugify(topic);
@@ -502,6 +563,23 @@ app.put('/api/topics/:slug', async (req, res) => {
   } catch (error) {
     console.error('Error updating topic:', error);
     return res.status(500).json({ error: 'Failed to update topic' });
+  }
+});
+
+app.delete('/api/topics/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { error } = await supabase
+      .from('topics')
+      .delete()
+      .eq('slug', slug);
+
+    if (error) throw error;
+
+    return res.json({ message: 'Topic deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting topic:', error);
+    return res.status(500).json({ error: 'Failed to delete topic' });
   }
 });
 
