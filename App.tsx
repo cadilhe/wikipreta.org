@@ -7,7 +7,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
-import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
+import AdminDashboard from './pages/AdminDashboard';
+import AdminImages from './pages/AdminImages';
+import AdminUsers from './pages/AdminUsers';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -384,7 +386,7 @@ const AppContent: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="max-w-[65ch] mx-auto pt-8 px-8 pb-20">
       <HistoryPanel
         isOpen={isHistoryOpen}
         history={history}
@@ -672,7 +674,9 @@ const App: React.FC = () => {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin" element={<AdminDashboard />} /> {/* Admin Route */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/imagens" element={<AdminImages />} />
+          <Route path="/admin/usuarios" element={<AdminUsers />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>
