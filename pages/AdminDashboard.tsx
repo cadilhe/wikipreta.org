@@ -18,6 +18,7 @@ const AdminDashboard: React.FC = () => {
     const [limit, setLimit] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
+    const [search, setSearch] = useState('');
     const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
@@ -28,13 +29,19 @@ const AdminDashboard: React.FC = () => {
             navigate('/login');
             return;
         }
-        fetchTopics(page, limit);
-    }, [isAuthenticated, authLoading, page, limit, navigate]);
+        
+        // Debounce search to avoid too many requests
+        const timeoutId = setTimeout(() => {
+            fetchTopics(page, limit, search);
+        }, 300);
 
-    const fetchTopics = async (pageNum: number, currentLimit: number) => {
+        return () => clearTimeout(timeoutId);
+    }, [isAuthenticated, authLoading, page, limit, search, navigate]);
+
+    const fetchTopics = async (pageNum: number, currentLimit: number, searchTerm: string = '') => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/topics?page=${pageNum}&limit=${currentLimit}`);
+            const response = await fetch(`/api/topics?page=${pageNum}&limit=${currentLimit}&search=${encodeURIComponent(searchTerm)}`);
             const data = await response.json();
             setTopics(data.topics);
             setTotalPages(data.pagination.pages);
@@ -50,6 +57,11 @@ const AdminDashboard: React.FC = () => {
         const newLimit = parseInt(e.target.value);
         setLimit(newLimit);
         setPage(1); // Reset to first page when changing limit
+    };
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        setPage(1); // Reset to first page when searching
     };
 
     const handleEdit = (topicName: string) => {
@@ -105,29 +117,44 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex justify-between items-center bg-stone-50/50 dark:bg-stone-950/20">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="limit" className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                                Itens por página:
-                            </label>
-                            <select
-                                id="limit"
-                                value={limit}
-                                onChange={handleLimitChange}
-                                className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
+                <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4 bg-stone-50/50 dark:bg-stone-950/20">
+                    <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                        <div className="relative w-full md:w-64">
+                            <input
+                                type="text"
+                                placeholder="Buscar verbete..."
+                                value={search}
+                                onChange={handleSearchChange}
+                                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </div>
                         </div>
-                        {!loading && totalItems > 0 && (
-                            <span className="text-sm text-stone-500">
-                                <span className="font-bold text-stone-900 dark:text-stone-100">{rangeStart}</span> a <span className="font-bold text-stone-900 dark:text-stone-100">{rangeEnd}</span> de <span className="font-bold text-stone-900 dark:text-stone-100">{totalItems}</span>
-                            </span>
-                        )}
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <label htmlFor="limit" className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                    Mostrar:
+                                </label>
+                                <select
+                                    id="limit"
+                                    value={limit}
+                                    onChange={handleLimitChange}
+                                    className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
+                            {!loading && totalItems > 0 && (
+                                <span className="text-sm text-stone-500 whitespace-nowrap">
+                                    <span className="font-bold text-stone-900 dark:text-stone-100">{rangeStart}</span> a <span className="font-bold text-stone-900 dark:text-stone-100">{rangeEnd}</span> de <span className="font-bold text-stone-900 dark:text-stone-100">{totalItems}</span>
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {!loading && totalPages > 1 && (
