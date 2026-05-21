@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { supabase } from '../services/supabase';
 
 interface Topic {
     id: string;
@@ -75,8 +76,16 @@ const AdminDashboard: React.FC = () => {
         }
 
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers: Record<string, string> = {};
+
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+
             const response = await fetch(`/api/topics/${slug}`, {
                 method: 'DELETE',
+                headers,
             });
 
             if (response.ok) {

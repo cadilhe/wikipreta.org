@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+import { supabase } from './supabase';
+
 const API_URL = '/api';
 const WIKIPRETA_HISTORY_KEY = 'wikipreta_history';
 
@@ -58,10 +60,20 @@ export const saveTopicContent = async (topic: string, content: string, editorEma
   try {
     const slug = toSlug(topic);
     
+    // Obter sessao ativa para injetar JWT
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = { 
+      'Content-Type': 'application/json' 
+    };
+
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     // Try to update first
     let response = await fetch(`${API_URL}/topics/${slug}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ 
         content,
         editor_email: editorEmail || 'anonymous',
@@ -73,7 +85,7 @@ export const saveTopicContent = async (topic: string, content: string, editorEma
     if (response.status === 404) {
       response = await fetch(`${API_URL}/topics`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           title: topic,
           content,
