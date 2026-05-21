@@ -339,7 +339,198 @@ app.post('/api/gemini/content', async (req, res) => {
   }
 });
 
-app.post('/api/gemini/image', async (req, res) => {
+// ============= Security Middlewares (Zero-Trust) =============
+
+// Simple in-memory rate limiter to prevent API abuse/DoS (Law 3)
+const rateLimitCache = new Map();
+const rateLimiter = (req, res, next) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  const maxRequests = 30; // Max 30 requests per minute
+
+  if (!rateLimitCache.has(ip)) {
+    rateLimitCache.set(ip, { count: 1, resetTime: now + windowMs });
+    return next();
+  }
+
+  const record = rateLimitCache.get(ip);
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + windowMs;
+    return next();
+  }
+
+  record.count += 1;
+  if (record.count > maxRequests) {
+    // 🔒 SEGURANÇA [VULN-DoS]: Evita abuso de chamadas de custo de IA / DoS
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+  }
+
+  next();
+};
+
+app.use(rateLimiter);
+
+// Middleware to enforce authentication using Supabase JWT tokens (Law 5, Law 6)
+const requireSupabaseAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      // 🔒 SEGURANÇA [VULN-BAC]: Nega acesso a operações privilegiadas sem token
+      return res.status(401).json({ error: 'Access denied: No token provided' });
+    }
+
+    // Call Supabase auth API to verify the token securely (verify token in backend)
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      // 🔒 SEGURANÇA [VULN-BAC]: Nega acesso caso o token seja inválido ou expirado
+      return res.status(403).json({ error: 'Access denied: Invalid or expired token' });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    return res.status(500).json({ error: 'Internal server error during authentication' });
+  }
+};
+
+// Input validation middleware to prevent payload size overflow and XSS (Law 2, Law 3)
+const validateTopicPayload = (req, res, next) => {
+  const { title, content } = req.body || {};
+
+  if (req.method === 'POST') {
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return res.status(400).json({ error: 'Invalid or missing title' });
+    }
+    if (title.length > 100) {
+      return res.status(400).json({ error: 'Title is too long (maximum 100 characters)' });
+    }
+  }
+
+  if (content !== undefined) {
+    if (typeof content !== 'string') {
+      return res.status(400).json({ error: 'Invalid content format' });
+    }
+    if (content.length > 10000) {
+      // 🔒 SEGURANÇA [VULN-DoS]: Rejeita payloads massivos que possam estourar buffers ou bancos de dados
+      return res.status(400).json({ error: 'Content is too long (maximum 10000 characters)' });
+    }
+  }
+
+  next();
+};
+
+// ============= Gemini API Proxies =============
+app.post('/api/gemini/content', async (req, res) => {
+  const { topic } = req.body || {};
+  if (!topic) return res.status(400).json({ error: 'Missing topic' });
+
+  if (isBanned(topic)) {
+    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
+  }
+
+  // Check DB first
+  const slug = slugify(topic);
+  const existingTopic = await getTopicBySlug(slug);
+
+  if (existingTopic && existingTopic.source === 'gemini') {
+    return res.json({
+      text: existingTopic.content,
+      highlights: existingTopic.highlights || [],
+      relatedTopics: existingTopic.related_topics || [],
+      generatedAt: existingTopic.updated_at,
+      source: 'db',
+      cached: true,
+    });
+  }
+
+  // 1. Busca contexto nos documentos próprios (RAG)
+  const knowledgeContext = await getContextFromKnowledge(topic);
+
+  if (!ai && !DEEPSEEK_API_KEY && !PREFER_OLLAMA) return res.status(500).json({ error: 'AI client not initialized' });
+
+  // 2. Constrói o prompt priorizando as fontes oficiais
+  const prompt = knowledgeContext 
+    ? `Você é um historiador especialista da WikiPreta. Use as referências oficiais abaixo para compor sua resposta.
+    
+    FONTES OFICIAIS (CONTEXTO):
+    ${knowledgeContext}
+    
+    TAREFA:
+    Escreva um parágrafo enciclopédico e educativo sobre "${topic}" baseando-se prioritariamente nas fontes acima. 
+    Se a informação não estiver nas fontes, use seu conhecimento base de forma complementar.
+    Mantenha o tom respeitoso e focado na cultura negra.
+    Destaque termos importantes com dois asteriscos (ex: **Zumbi dos Palmares**).`
+    : `Forneça uma biografia ou descrição enciclopédica concisa, em um único parágrafo, sobre "${topic}" no contexto da história e cultura negra do Brasil, da África ou da diáspora. O texto deve ser informativo, direto e respeitoso. Destaque outras personalidades, lugares ou conceitos relevantes envolvendo-os com dois asteriscos (ex: **Zumbi dos Palmares** ou **Quilombo**). Não inclua o nome do tópico no início do parágrafo.`;
+
+  try {
+    let generatedText = null;
+    let source = 'unknown';
+
+    // 1. Try DeepSeek first (Primary)
+    if (!generatedText) {
+      generatedText = await generateWithDeepSeek(prompt);
+      if (generatedText) {
+        source = 'deepseek';
+        console.log('Successfully generated with DeepSeek');
+      }
+    }
+
+    // 2. Try Gemini as backup
+    if (!generatedText && ai) {
+      try {
+        console.log('Using Gemini (1.5 Flash) as backup...');
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const response = await model.generateContent(prompt);
+        generatedText = response.response.text().trim();
+        source = 'gemini';
+        console.log('Successfully generated with Gemini');
+      } catch (geminiError) {
+        console.error('Gemini fallback failed:', geminiError.message);
+      }
+    }
+
+    // 3. Fallback to Ollama if others failed
+    if (!generatedText) {
+      console.log('Using Ollama as final fallback...');
+      generatedText = await generateWithOllama(prompt);
+      if (generatedText) source = 'ollama';
+    }
+
+    if (!generatedText) {
+      return res.status(500).json({ error: 'Failed to generate content from any provider' });
+    }
+
+    const highlightMatches = generatedText.match(/\*\*([^*]+)\*\*/g) || [];
+    const highlights = highlightMatches.map(h => h.replace(/\*\*/g, ''));
+
+    // Save to DB
+    if (!existingTopic) {
+      await createTopic({ slug, title: topic, content: generatedText, highlights, relatedTopics: highlights, source });
+    } else {
+      await updateTopic(slug, { content: generatedText, highlights, relatedTopics: highlights });
+    }
+
+    return res.json({
+      text: generatedText,
+      highlights,
+      relatedTopics: highlights,
+      generatedAt: new Date().toISOString(),
+      source: source,
+    });
+  } catch (error) {
+    console.error('Error generating content:', error);
+    return res.status(500).json({ error: 'Failed to generate content' });
+  }
+});
+
+// requireSupabaseAuth applied to image generation as it is resource/cost intensive
+app.post('/api/gemini/image', requireSupabaseAuth, async (req, res) => {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Missing topic' });
 
@@ -373,12 +564,6 @@ app.post('/api/gemini/image', async (req, res) => {
 
   if (!ai) return res.status(500).json({ error: 'AI client not initialized' });
 
-  // Only check authentication if we actually need to generate a new image
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) {
-      return res.status(401).json({ error: 'Access denied: Authentication required to generate new images' });
-  }
-
   const prompt = `Crie uma imagem artística e simbólica representando '${topic}'. Estilo: arte digital, minimalista, com cores quentes e terrosas que remetam à cultura africana e brasileira. Evite rostos ou figuras humanas diretas, foque em conceitos, padrões e símbolos.`;
 
   try {
@@ -396,16 +581,15 @@ app.post('/api/gemini/image', async (req, res) => {
       const base64ImageBytes = response.generatedImages[0].image.imageBytes;
       const buffer = Buffer.from(base64ImageBytes, 'base64');
       
-      const slug = slugify(topic);
       const filename = `${slug}-${Date.now()}.png`;
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('verbetes-images')
-        .upload(filename, buffer, {
-          contentType: 'image/png',
-          upsert: true
-        });
+          .from('verbetes-images')
+          .upload(filename, buffer, {
+            contentType: 'image/png',
+            upsert: true
+          });
 
       if (uploadError) {
         console.error('Supabase Storage Upload Error:', uploadError.message);
@@ -470,7 +654,12 @@ app.get('/api/random-images', (req, res) => {
 
 app.get('/api/topics', async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    let { page = 1, limit = 10, search = '' } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+    
+    // 🔒 SEGURANÇA [VULN-DoS]: Capa o limite de paginação para evitar dumping total de dados (Law 3)
+    limit = Math.min(limit, 100);
     const offset = (page - 1) * limit;
 
     let query = supabase
@@ -490,8 +679,8 @@ app.get('/api/topics', async (req, res) => {
     return res.json({
       topics,
       pagination: { 
-        page: parseInt(page), 
-        limit: parseInt(limit), 
+        page, 
+        limit, 
         total: count, 
         pages: Math.ceil(count / limit) 
       },
@@ -529,7 +718,7 @@ app.get('/api/topics/:slug', async (req, res) => {
   }
 });
 
-app.post('/api/topics', async (req, res) => {
+app.post('/api/topics', requireSupabaseAuth, validateTopicPayload, async (req, res) => {
   try {
     const { title, content, highlights = [], relatedTopics = [], imageUrl = null, source = 'user' } = req.body;
     if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
@@ -546,7 +735,7 @@ app.post('/api/topics', async (req, res) => {
   }
 });
 
-app.put('/api/topics/:slug', async (req, res) => {
+app.put('/api/topics/:slug', requireSupabaseAuth, validateTopicPayload, async (req, res) => {
   try {
     const { slug } = req.params;
     const topic = await getTopicBySlug(slug);
@@ -566,7 +755,7 @@ app.put('/api/topics/:slug', async (req, res) => {
   }
 });
 
-app.delete('/api/topics/:slug', async (req, res) => {
+app.delete('/api/topics/:slug', requireSupabaseAuth, async (req, res) => {
   try {
     const { slug } = req.params;
     const { error } = await supabase
