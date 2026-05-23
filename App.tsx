@@ -25,6 +25,7 @@ import ThemeSwitcher from './components/ThemeSwitcher';
 import AboutPage from './components/AboutPage';
 import PrivacyPage from './components/PrivacyPage';
 import HistoryPanel from './components/HistoryPanel';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // A curated list of important figures, events, and concepts for Wikipreta.org
 const PREDEFINED_WORDS = [
@@ -674,9 +675,9 @@ const App: React.FC = () => {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/imagens" element={<AdminImages />} />
-          <Route path="/admin/usuarios" element={<AdminUsers />} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/imagens" element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
+          <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>

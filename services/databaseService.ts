@@ -152,3 +152,140 @@ export const clearHistory = (): void => {
     console.error('Error clearing history from localStorage:', error);
   }
 };
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  banned_until?: string;
+}
+
+/**
+ * Helper to perform authenticated requests to the backend API.
+ */
+const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+  }
+  return response;
+};
+
+/**
+ * Lists all users for administration purposes.
+ */
+export const listUsers = async (): Promise<AdminUser[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/users`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error listing admin users:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates a user's role.
+ */
+export const updateUserRole = async (userId: string, role: string): Promise<AdminUser> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    throw error;
+  }
+};
+
+/**
+ * Toggles a user's ban/disabled status.
+ */
+export const toggleUserBan = async (userId: string, ban: boolean): Promise<AdminUser> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/users/${userId}/ban`, {
+      method: 'PUT',
+      body: JSON.stringify({ ban }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error toggling user ban:', error);
+    throw error;
+  }
+};
+
+export interface AdminImage {
+  name: string;
+  url: string;
+  size: number;
+  created_at: string;
+}
+
+/**
+ * Lists all admin images from the Supabase bucket.
+ */
+export const listAdminImages = async (): Promise<AdminImage[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/images`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error listing admin images:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes an admin image from the bucket.
+ */
+export const deleteAdminImage = async (name: string): Promise<void> => {
+  try {
+    await authenticatedFetch(`${API_URL}/admin/images/${name}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error deleting admin image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Search topics by query string for mapping images.
+ */
+export const searchTopicsForAssociation = async (search: string): Promise<any[]> => {
+  try {
+    const response = await fetch(`${API_URL}/topics?limit=50&search=${encodeURIComponent(search)}`);
+    if (!response.ok) throw new Error('Failed to fetch topics');
+    const data = await response.json();
+    return data.topics || [];
+  } catch (error) {
+    console.error('Error searching topics for image association:', error);
+    throw error;
+  }
+};
+
+/**
+ * Associates an image URL with a topic by its slug.
+ */
+export const associateImageToTopic = async (slug: string, imageUrl: string): Promise<void> => {
+  try {
+    await authenticatedFetch(`${API_URL}/topics/${slug}`, {
+      method: 'PUT',
+      body: JSON.stringify({ imageUrl }),
+    });
+  } catch (error) {
+    console.error('Error associating image to topic:', error);
+    throw error;
+  }
+};
