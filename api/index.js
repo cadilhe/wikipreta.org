@@ -80,7 +80,7 @@ async function getTopicBySlug(slug) {
 }
 
 async function createTopic(topicData) {
-  const { slug, title, content, highlights, relatedTopics, imageUrl, source } = topicData;
+  const { slug, title, content, highlights, relatedTopics, imageUrl, source, author_id } = topicData;
   const { data, error } = await supabase
     .from('topics')
     .upsert([{
@@ -90,7 +90,8 @@ async function createTopic(topicData) {
       highlights: highlights || [],
       related_topics: relatedTopics || [],
       image_url: imageUrl,
-      source
+      source,
+      author_id
     }], { onConflict: 'slug' })
     .select()
     .single();
@@ -727,11 +728,12 @@ app.post('/api/topics', requireSupabaseAuth, validateTopicPayload, async (req, r
     const existing = await getTopicBySlug(slug);
     if (existing) return res.status(409).json({ error: 'Topic already exists' });
 
-    const created = await createTopic({ slug, title, content, highlights, relatedTopics, imageUrl, source });
+    const author_id = req.user?.id || null;
+    const created = await createTopic({ slug, title, content, highlights, relatedTopics, imageUrl, source, author_id });
     return res.status(201).json(created);
   } catch (error) {
     console.error('Error creating topic:', error);
-    return res.status(500).json({ error: 'Failed to create topic' });
+    return res.status(500).json({ error: error.message || 'Failed to create topic' });
   }
 });
 
@@ -751,7 +753,7 @@ app.put('/api/topics/:slug', requireSupabaseAuth, validateTopicPayload, async (r
     });
   } catch (error) {
     console.error('Error updating topic:', error);
-    return res.status(500).json({ error: 'Failed to update topic' });
+    return res.status(500).json({ error: error.message || 'Failed to update topic' });
   }
 });
 
@@ -768,7 +770,171 @@ app.delete('/api/topics/:slug', requireSupabaseAuth, async (req, res) => {
     return res.json({ message: 'Topic deleted successfully' });
   } catch (error) {
     console.error('Error deleting topic:', error);
-    return res.status(500).json({ error: 'Failed to delete topic' });
+    return res.status(500).json({ error: error.message || 'Failed to delete topic' });
+  }
+});
+
+// Middleware to enforce administrator privileges
+const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.user_metadata?.role === 'admin') {
+    next();
+  } else {
+    // 🔒 SEGURANÇA [VULN-BAC]: Nega acesso caso o usuário autenticado não seja administrador
+    return res.status(403).json({ error: 'Access denied: Requires admin role' });
+  }
+};
+
+// ============= Admin Endpoints =============
+app.get('/api/admin/users', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    if (error) throw error;
+    
+    // Mapear apenas dados relevantes e seguros
+    const mappedUsers = users.map(u => ({
+      id: u.id,
+      email: u.email,
+      role: u.user_metadata?.role || 'editor',
+      created_at: u.created_at,
+      last_sign_in_at: u.last_sign_in_at,
+      banned_until: u.banned_until
+    }));
+
+    return res.json(mappedUsers);
+  } catch (error) {
+    console.error('Error listing users:', error);
+    return res.status(500).json({ error: error.message || 'Failed to list users' });
+  }
+});
+
+app.put('/api/admin/users/:id/role', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role || !['admin', 'editor'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // 🔒 SEGURANÇA [VULN-BAC]: Impede que o administrador altere o próprio papel
+    if (id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot change your own admin status' });
+    }
+
+    const { data, error } = await supabase.auth.admin.updateUserById(id, {
+      user_metadata: { role }
+    });
+
+    if (error) throw error;
+
+    return res.json({
+      id: data.user.id,
+      email: data.user.email,
+      role: data.user.user_metadata?.role || 'editor',
+      created_at: data.user.created_at,
+      last_sign_in_at: data.user.last_sign_in_at,
+      banned_until: data.user.banned_until
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update user role' });
+  }
+});
+
+app.put('/api/admin/users/:id/ban', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ban } = req.body; // boolean
+
+    // 🔒 SEGURANÇA [VULN-BAC]: Impede que o administrador bana a si mesmo
+    if (id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot ban yourself' });
+    }
+
+    const banDuration = ban ? '87600h' : 'none'; // 10 anos ou remover ban
+    const { data, error } = await supabase.auth.admin.updateUserById(id, {
+      ban_duration: banDuration
+    });
+
+    if (error) throw error;
+
+    return res.json({
+      id: data.user.id,
+      email: data.user.email,
+      role: data.user.user_metadata?.role || 'editor',
+      created_at: data.user.created_at,
+      last_sign_in_at: data.user.last_sign_in_at,
+      banned_until: data.user.banned_until
+    });
+  } catch (error) {
+    console.error('Error toggling user ban status:', error);
+    return res.status(500).json({ error: error.message || 'Failed to toggle ban status' });
+  }
+});
+
+// ============= Admin Images Endpoints =============
+app.get('/api/admin/images', requireSupabaseAuth, async (req, res) => {
+  try {
+    const { data: files, error } = await supabase.storage
+      .from('verbetes-images')
+      .list('', {
+        limit: 1000,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) throw error;
+
+    const images = files.map(file => {
+      const { data: { publicUrl } } = supabase.storage
+        .from('vervetes-images') // note o fallback para o nome correto
+        .getPublicUrl(file.name);
+
+      // Garantir o uso do bucket correto
+      const { data: { publicUrl: correctUrl } } = supabase.storage
+        .from('verbetes-images')
+        .getPublicUrl(file.name);
+
+      return {
+        name: file.name,
+        url: correctUrl,
+        size: file.metadata?.size || 0,
+        created_at: file.created_at
+      };
+    });
+
+    return res.json(images);
+  } catch (error) {
+    console.error('Error listing images:', error);
+    return res.status(500).json({ error: error.message || 'Failed to list images' });
+  }
+});
+
+app.delete('/api/admin/images/:name', requireSupabaseAuth, async (req, res) => {
+  try {
+    const { name } = req.params;
+
+    // Remover imagem do bucket
+    const { error: deleteError } = await supabase.storage
+      .from('verbetes-images')
+      .remove([name]);
+
+    if (deleteError) throw deleteError;
+
+    // Obter URL pública para remover referências nos verbetes
+    const { data: { publicUrl } } = supabase.storage
+      .from('verbetes-images')
+      .getPublicUrl(name);
+
+    // 🔒 SEGURANÇA [VULN-BAC]: Limpa os links quebrados na tabela topics
+    await supabase
+      .from('topics')
+      .update({ image_url: null })
+      .eq('image_url', publicUrl);
+
+    return res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete image' });
   }
 });
 
