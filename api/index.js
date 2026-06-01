@@ -238,6 +238,91 @@ async function generateWithOllama(prompt) {
   }
 }
 
+function getLevenshteinDistance(s, t) {
+  if (!s || !t) return 99;
+  const d = [];
+  const n = s.length;
+  const m = t.length;
+  if (n === 0) return m;
+  if (m === 0) return n;
+
+  for (let i = 0; i <= n; i++) d[i] = [i];
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1, // deletion
+        d[i][j - 1] + 1, // insertion
+        d[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  return d[n][m];
+}
+
+async function validateTopicWithAI(topic) {
+  const prompt = `Analise o termo "${topic}". Identifique se é um termo válido (um personagem histórico, local, evento ou conceito real e relevante no contexto da história/cultura negra da África, Brasil ou diáspora) ou se é um erro ortográfico ou spam/caracteres aleatórios.
+  Responda APENAS com um objeto JSON no formato:
+  {
+    "isValid": true,
+    "isTypo": false,
+    "correctedTerm": "",
+    "reason": "breve justificativa"
+  }
+  Mande apenas o JSON cru, sem tags de bloco de código markdown ou texto explicativo extra.`;
+
+  let responseText = null;
+
+  // 1. Try DeepSeek first
+  responseText = await generateWithDeepSeek(prompt);
+
+  // 2. Try Gemini backup
+  if (!responseText && ai) {
+    try {
+      console.log('Using Gemini for term validation...');
+      const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const response = await model.generateContent(prompt);
+      responseText = response.response.text().trim();
+    } catch (err) {
+      console.error('Gemini validation fallback failed:', err.message);
+    }
+  }
+
+  // 3. Try Ollama backup
+  if (!responseText) {
+    console.log('Using Ollama for term validation...');
+    responseText = await generateWithOllama(prompt);
+  }
+
+  if (!responseText) {
+    console.log('No AI provider available for validation, defaulting to valid');
+    return { isValid: true };
+  }
+
+  try {
+    let cleanText = responseText.trim();
+    if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/^```(json)?/i, '');
+      cleanText = cleanText.replace(/```$/, '');
+      cleanText = cleanText.trim();
+    }
+    const result = JSON.parse(cleanText);
+    return {
+      isValid: result.isValid !== undefined ? !!result.isValid : true,
+      isTypo: !!result.isTypo,
+      correctedTerm: result.correctedTerm || '',
+      reason: result.reason || ''
+    };
+  } catch (e) {
+    console.error('Failed to parse AI validation response:', responseText, e);
+    return { isValid: true }; // Default to true if parsing fails
+  }
+}
+
+
+
 async function getContextFromKnowledge(topic) {
   const OLLAMA_LOCAL = 'http://127.0.0.1:11434';
 
@@ -402,6 +487,63 @@ app.post('/api/gemini/content', async (req, res) => {
       source: 'db',
       cached: true,
     });
+  }
+
+  // --- FLUXO HÍBRIDO DE PREVENÇÃO DE ERROS E ALUCINAÇÕES ---
+  // 1. Busca local por aproximação no banco de dados (Levenshtein)
+  try {
+    const { data: allTopics } = await supabase
+      .from('topics')
+      .select('slug, title');
+
+    if (allTopics && allTopics.length > 0) {
+      const normalizedInput = slug.trim().toLowerCase();
+      let bestMatch = null;
+      let minDistance = 99;
+
+      for (const t of allTopics) {
+        if (!t.slug || !t.title) continue;
+        const existingSlug = t.slug.trim().toLowerCase();
+        const dist = getLevenshteinDistance(normalizedInput, existingSlug);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestMatch = t;
+        }
+      }
+
+      // Limite: 1 para palavras de até 5 caracteres, 2 para palavras maiores
+      const threshold = normalizedInput.length <= 5 ? 1 : 2;
+      if (minDistance > 0 && minDistance <= threshold && bestMatch) {
+        console.log(`🔍 Typo detected locally: "${topic}" -> "${bestMatch.title}" (distance: ${minDistance})`);
+        return res.status(400).json({
+          error: 'typo',
+          suggestedTopic: bestMatch.title,
+          suggestedSlug: bestMatch.slug
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error in local similarity check:', err);
+  }
+
+  // 2. Validação ativa via IA (para novos termos)
+  console.log(`Checking if "${topic}" is a valid, real term...`);
+  const validation = await validateTopicWithAI(topic);
+  if (!validation.isValid) {
+    if (validation.isTypo && validation.correctedTerm) {
+      const correctedSlug = slugify(validation.correctedTerm);
+      console.log(`🔍 Typo detected by AI: "${topic}" -> "${validation.correctedTerm}"`);
+      return res.status(400).json({
+        error: 'typo',
+        suggestedTopic: validation.correctedTerm,
+        suggestedSlug: correctedSlug
+      });
+    } else {
+      console.log(`🚫 Query rejected by AI: "${topic}" (Reason: ${validation.reason})`);
+      return res.status(422).json({
+        error: `O termo "${topic}" não foi reconhecido como um conceito ou figura real no escopo da Wikipreta. Por favor, verifique a grafia ou tente outro termo.`
+      });
+    }
   }
 
   // 1. Busca contexto nos documentos próprios (RAG)

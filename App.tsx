@@ -62,6 +62,7 @@ const AppContent: React.FC = () => {
   const [content, setContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<{ title: string, slug: string } | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(() => {
@@ -167,6 +168,9 @@ const AppContent: React.FC = () => {
         setIsEditing(false);
       }
 
+      setError(null);
+      setSuggestion(null);
+
       try {
         // 1. Check DB first (via server)
         const topicData = await getTopicContent(currentTopic);
@@ -199,7 +203,14 @@ const AppContent: React.FC = () => {
 
       } catch (e: unknown) {
         const errorMessage = e instanceof Error ? e.message : 'Ocorreu um erro desconhecido';
-        setError(errorMessage);
+        if (errorMessage.startsWith('typo:')) {
+          const parts = errorMessage.split(':');
+          setSuggestion({ title: parts[1], slug: parts[2] });
+          setError(null);
+        } else {
+          setError(errorMessage);
+          setSuggestion(null);
+        }
         setContent('');
         console.error(e);
       } finally {
@@ -471,7 +482,7 @@ const AppContent: React.FC = () => {
               {!isLoading && error && (
                 <div className="text-center py-8 px-6 border border-solid border-red-300 dark:border-red-700 rounded-lg bg-red-50 dark:bg-red-900/20">
                   <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">{error}</h3>
-                  {error !== 'Este termo não existe na Wikipreta.' && (
+                  {error !== 'Este termo não existe na Wikipreta.' && !error.includes('não foi reconhecido') && (
                     <button
                       onClick={() => {
                         setError(null);
@@ -487,7 +498,22 @@ const AppContent: React.FC = () => {
                 </div>
               )}
 
-              {!isLoading && content.length === 0 && !error && (
+              {!isLoading && suggestion && (
+                <div className="text-center py-8 px-6 border border-solid border-[#B8860B] dark:border-[#D4AF37] rounded-lg bg-amber-50 dark:bg-amber-900/10">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    Você quis dizer:{' '}
+                    <button
+                      onClick={() => handleWordClick(suggestion.title)}
+                      className="underline font-bold text-[#B8860B] dark:text-[#D4AF37] hover:opacity-80 transition-opacity"
+                    >
+                      {suggestion.title}
+                    </button>
+                    ?
+                  </h3>
+                </div>
+              )}
+
+              {!isLoading && content.length === 0 && !error && !suggestion && (
                 <div className="text-center py-8 px-6 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg">
                   <h3 className="text-xl text-gray-800 dark:text-gray-200">Não foi encontrado conteúdo para "{currentTopic}".</h3>
                   <p className="text-gray-600 dark:text-gray-400 mt-2 mb-6">Você gostaria de ser o primeiro a criar este verbete?</p>

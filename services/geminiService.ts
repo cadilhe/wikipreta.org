@@ -37,7 +37,11 @@ const postJson = async (url: string, body: any) => {
         const clonedResp = resp.clone();
         const errJson = await clonedResp.json();
         if (errJson && typeof errJson.error === 'string') {
-          errorMessage = errJson.error;
+          if (errJson.error === 'typo' && typeof errJson.suggestedTopic === 'string' && typeof errJson.suggestedSlug === 'string') {
+            errorMessage = `typo:${errJson.suggestedTopic}:${errJson.suggestedSlug}`;
+          } else {
+            errorMessage = errJson.error;
+          }
         }
       } catch (e) {
         try {
