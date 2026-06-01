@@ -32,8 +32,20 @@ const postJson = async (url: string, body: any) => {
     });
     
     if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`Server responded ${resp.status}: ${text}`);
+      let errorMessage = `Erro do servidor (${resp.status})`;
+      try {
+        const clonedResp = resp.clone();
+        const errJson = await clonedResp.json();
+        if (errJson && typeof errJson.error === 'string') {
+          errorMessage = errJson.error;
+        }
+      } catch (e) {
+        try {
+          const text = await resp.text();
+          if (text) errorMessage = text;
+        } catch (e2) {}
+      }
+      throw new Error(errorMessage);
     }
     return resp.json();
   } catch (err) {
@@ -42,14 +54,12 @@ const postJson = async (url: string, body: any) => {
   }
 };
 
-export const generateTopicContent = async (topic: string): Promise<string | null> => {
-  try {
-    const data = await postJson('/api/gemini/content', { topic });
-    return typeof data.text === 'string' ? data.text : null;
-  } catch (e) {
-    console.error('generateTopicContent errored:', e);
-    return null;
+export const generateTopicContent = async (topic: string): Promise<string> => {
+  const data = await postJson('/api/gemini/content', { topic });
+  if (data && typeof data.text === 'string') {
+    return data.text;
   }
+  throw new Error('Resposta inválida do servidor');
 };
 
 export const generateImageForTopic = async (topic: string): Promise<string | null> => {

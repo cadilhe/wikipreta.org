@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminImages from './pages/AdminImages';
 import AdminUsers from './pages/AdminUsers';
+import AdminBannedTerms from './pages/AdminBannedTerms';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -160,7 +161,7 @@ const AppContent: React.FC = () => {
       setError(null);
       setContent('');
       setTopicImage(null);
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('edit') !== 'true') {
         setIsEditing(false);
@@ -169,11 +170,11 @@ const AppContent: React.FC = () => {
       try {
         // 1. Check DB first (via server)
         const topicData = await getTopicContent(currentTopic);
-        
+
         if (topicData) {
           setContent(topicData.content);
           setTopicImage(topicData.image_url || getRandomImage());
-          setIsLoading(false); 
+          setIsLoading(false);
         } else {
           // 2. If not in DB, generate content via AI
           const generatedContent = await generateTopicContent(currentTopic);
@@ -313,14 +314,14 @@ const AppContent: React.FC = () => {
     if (editedContent.trim()) {
       const finalContent = editedContent.trim();
       const finalImageUrl = editedImageUrl.trim() || undefined;
-      
+
       await saveTopicContent(currentTopic, finalContent, user?.email, finalImageUrl);
-      
+
       setContent(finalContent);
       if (finalImageUrl) {
         setTopicImage(finalImageUrl);
       }
-      
+
       setIsEditing(false);
       setEditedContent('');
       setEditedImageUrl('');
@@ -386,6 +387,7 @@ const AppContent: React.FC = () => {
     { label: 'Privacidade', page: 'privacy' },
   ];
 
+  // Header Cabeçalho
   return (
     <div className="max-w-[65ch] mx-auto pt-8 px-8 pb-20">
       <HistoryPanel
@@ -469,17 +471,19 @@ const AppContent: React.FC = () => {
               {!isLoading && error && (
                 <div className="text-center py-8 px-6 border border-solid border-red-300 dark:border-red-700 rounded-lg bg-red-50 dark:bg-red-900/20">
                   <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">{error}</h3>
-                  <button
-                    onClick={() => {
-                      setError(null);
-                      setCurrentTopic(currentTopic);
-                    }}
-                    className="mt-4 inline-flex items-center gap-2 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 font-semibold transition-transform transform hover:scale-105"
-                    aria-label="Tentar novamente"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"></path></svg>
-                    Tentar Novamente
-                  </button>
+                  {error !== 'Este termo não existe na Wikipreta.' && (
+                    <button
+                      onClick={() => {
+                        setError(null);
+                        setCurrentTopic(currentTopic);
+                      }}
+                      className="mt-4 inline-flex items-center gap-2 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 font-semibold transition-transform transform hover:scale-105"
+                      aria-label="Tentar novamente"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"></path></svg>
+                      Tentar Novamente
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -532,7 +536,7 @@ const AppContent: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                    
+
                     <textarea
                       value={editedContent}
                       onChange={(e) => setEditedContent(e.target.value)}
@@ -542,7 +546,7 @@ const AppContent: React.FC = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 italic">
                       Dica: Palavras entre **asteriscos duplos** (negrito) tornam-se links para outros verbetes automaticamente.
                     </p>
-                    
+
                     <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                       Imagem do Verbete
                     </label>
@@ -643,22 +647,22 @@ const AppContent: React.FC = () => {
                 )}
               </React.Fragment>
             ))}
-              <li>
-                {isAuthenticated ? (
-                  <>
-                    <button onClick={() => navigate('/admin')} className="mr-3 px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                      Admin
-                    </button>
-                    <button onClick={logout} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                      Sair ({user?.username})
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => navigate('/login')} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
-                    Login
+            <li>
+              {isAuthenticated ? (
+                <>
+                  <button onClick={() => navigate('/admin')} className="mr-3 px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                    Admin
                   </button>
-                )}
-              </li>
+                  <button onClick={logout} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                    Sair ({user?.username})
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => navigate('/login')} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                  Login
+                </button>
+              )}
+            </li>
           </ul>
         </nav>
         <p className="footer-text" style={{ margin: 0 }}>
@@ -677,6 +681,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/imagens" element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
+          <Route path="/admin/banidos" element={<ProtectedRoute allowedRoles={['admin']}><AdminBannedTerms /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/*" element={<AppContent />} />
         </Routes>

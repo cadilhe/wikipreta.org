@@ -23,6 +23,14 @@ const AdminDashboard: React.FC = () => {
     const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
+    const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; slug: string; title: string }>({
+        isOpen: false,
+        slug: '',
+        title: ''
+    });
+
     useEffect(() => {
         if (authLoading) return;
 
@@ -70,10 +78,20 @@ const AdminDashboard: React.FC = () => {
         navigate(`/?topic=${encodeURIComponent(topicName)}&edit=true`);
     };
 
-    const handleDelete = async (slug: string, title: string) => {
-        if (!window.confirm(`Tem certeza que deseja excluir o verbete "${title}"? Esta ação não pode ser desfeita.`)) {
-            return;
-        }
+    const handleDeleteClick = (slug: string, title: string) => {
+        setConfirmModal({
+            isOpen: true,
+            slug,
+            title
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        const { slug, title } = confirmModal;
+        setConfirmModal({ isOpen: false, slug: '', title: '' });
+        setError(null);
+        setSuccessMessage(null);
+        setLoading(true);
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -91,14 +109,17 @@ const AdminDashboard: React.FC = () => {
             if (response.ok) {
                 // Remove from local state
                 setTopics(topics.filter(t => t.slug !== slug));
-                alert('Verbete excluído com sucesso.');
+                setSuccessMessage('Verbete excluído com sucesso.');
+                setTimeout(() => setSuccessMessage(null), 3000);
             } else {
-                const error = await response.json();
-                throw new Error(error.error || 'Erro ao excluir');
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro ao excluir');
             }
-        } catch (error: any) {
-            console.error('Failed to delete topic:', error);
-            alert(`Erro: ${error.message}`);
+        } catch (err: any) {
+            console.error('Failed to delete topic:', err);
+            setError(err.message || 'Falha ao excluir o verbete.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -124,6 +145,27 @@ const AdminDashboard: React.FC = () => {
                     Ver Site
                 </button>
             </div>
+
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-700 dark:text-red-400 flex items-center justify-between animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <span>{error}</span>
+                    </div>
+                    <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            )}
+
+            {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-lg text-green-700 dark:text-green-400 flex items-center justify-between animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span>{successMessage}</span>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
                 <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4 bg-stone-50/50 dark:bg-stone-950/20">
@@ -248,7 +290,7 @@ const AdminDashboard: React.FC = () => {
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(topic.slug, topic.title)}
+                                                    onClick={() => handleDeleteClick(topic.slug, topic.title)}
                                                     className="p-2 text-stone-400 hover:text-red-600 transition-colors"
                                                     title="Excluir"
                                                 >
@@ -285,6 +327,40 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 )}
             </div>
+            {/* Custom confirmation modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/70 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="p-2.5 rounded-full bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-serif font-bold text-stone-900 dark:text-white">
+                                    Excluir Verbete
+                                </h3>
+                                <p className="text-stone-600 dark:text-stone-400 text-sm mt-1.5 leading-relaxed">
+                                    Tem certeza que deseja excluir permanentemente o verbete <strong>"{confirmModal.title}"</strong>? Esta ação não pode ser desfeita.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setConfirmModal({ isOpen: false, slug: '', title: '' })}
+                                className="px-4 py-2 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 rounded-lg hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors text-sm font-semibold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleConfirmDelete}
+                                className="px-4 py-2 text-white rounded-lg transition-colors text-sm font-semibold bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400 dark:text-black"
+                            >
+                                Confirmar e Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

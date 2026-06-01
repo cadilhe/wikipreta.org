@@ -35,3 +35,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_topics_slug ON topics(slug);
 CREATE INDEX IF NOT EXISTS idx_topics_source ON topics(source);
 CREATE INDEX IF NOT EXISTS idx_revisions_topicId ON revisions(topicId);
+
+-- Banned terms table: termos proibidos
+CREATE TABLE IF NOT EXISTS banned_terms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  term TEXT UNIQUE NOT NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_banned_terms_term ON banned_terms(term);
+

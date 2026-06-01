@@ -289,3 +289,83 @@ export const associateImageToTopic = async (slug: string, imageUrl: string): Pro
     throw error;
   }
 };
+
+export interface BannedTerm {
+  id: string;
+  term: string;
+  created_at: string;
+}
+
+/**
+ * Lists all banned terms for moderation.
+ */
+export const listBannedTerms = async (): Promise<BannedTerm[]> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/banned-terms`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error listing banned terms:', error);
+    throw error;
+  }
+};
+
+/**
+ * Bans a new term.
+ */
+export const addBannedTerm = async (term: string): Promise<BannedTerm> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/banned-terms`, {
+      method: 'POST',
+      body: JSON.stringify({ term }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding banned term:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes/unbans a term by ID.
+ */
+export const deleteBannedTerm = async (id: string): Promise<void> => {
+  try {
+    await authenticatedFetch(`${API_URL}/admin/banned-terms/${id}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error deleting banned term:', error);
+    throw error;
+  }
+};
+
+/**
+ * Imports banned terms in bulk.
+ */
+export const importBannedTermsBulk = async (terms: string[]): Promise<{ count: number; message: string }> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/admin/banned-terms/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ terms }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error importing bulk banned terms:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes/unbans banned terms in bulk.
+ */
+export const deleteBannedTermsBulk = async (ids: string[]): Promise<void> => {
+  try {
+    await authenticatedFetch(`${API_URL}/admin/banned-terms/delete-bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  } catch (error) {
+    console.error('Error deleting bulk banned terms:', error);
+    throw error;
+  }
+};

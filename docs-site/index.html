@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wikipreta.org — Documentação Técnica</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --bg-sidebar: #141414;
+    --bg-card: #1a1a1a;
+    --bg-hover: #1f1f1f;
+    --border: #2a2a2a;
+    --text: #f0ece4;
+    --text-muted: #9a9080;
+    --text-dim: #4a4440;
+    --accent: #c9862a;
+    --accent-hover: #e09a3a;
+    --green: #4caf7d;
+    --yellow: #e6b84a;
+    --red: #e05555;
+    --code-bg: #161616;
+    --sidebar-w: 288px;
+    --header-h: 58px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.75; }
+
+  /* ── Header ── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--header-h);
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 16px;
+  }
+  #logo { display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; }
+  #logo-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #8b1a1a, #c9862a); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  #logo-text { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+  #logo-text span { color: var(--accent); }
+  #logo-badge { font-size: 11px; background: rgba(201,134,42,.2); color: var(--accent); border: 1px solid rgba(201,134,42,.3); padding: 2px 8px; border-radius: 999px; font-weight: 700; letter-spacing: .5px; }
+  #search-wrap { flex: 1; max-width: 380px; margin-left: auto; position: relative; }
+  #search { width: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 36px; color: var(--text); font-size: 13px; outline: none; transition: border-color .2s; }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--text-dim); }
+  #search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
+  #menu-btn { display: none; background: none; border: none; color: var(--text); cursor: pointer; padding: 4px; }
+
+  /* ── Layout ── */
+  #layout { display: flex; padding-top: var(--header-h); min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    position: fixed; top: var(--header-h); left: 0; bottom: 0;
+    width: var(--sidebar-w); overflow-y: auto;
+    background: var(--bg-sidebar); border-right: 1px solid var(--border);
+    padding: 16px 0 40px; transition: transform .3s;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-group-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; font-size: 11px; font-weight: 700;
+    letter-spacing: .8px; text-transform: uppercase; color: var(--text-dim);
+    cursor: pointer; user-select: none;
+  }
+  .nav-group-header:hover { color: var(--text-muted); }
+  .nav-group-header .chevron { margin-left: auto; transition: transform .2s; font-size: 10px; }
+  .nav-group-header.collapsed .chevron { transform: rotate(-90deg); }
+  .nav-items.hidden { display: none; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px 7px 36px; font-size: 13px; color: var(--text-muted);
+    cursor: pointer; transition: all .15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+  .nav-item.active { background: rgba(201,134,42,.08); color: var(--accent-hover); border-left-color: var(--accent); }
+  .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .nav-item.active .dot { background: var(--accent); }
+
+  /* ── Content ── */
+  #content { margin-left: var(--sidebar-w); flex: 1; padding: 48px 56px 80px; }
+  #content-inner { max-width: 800px; }
+
+  /* ── Search Results ── */
+  #search-results {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    max-height: 380px; overflow-y: auto; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  }
+  .search-result { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s; }
+  .search-result:last-child { border-bottom: none; }
+  .search-result:hover { background: var(--bg-hover); }
+  .sr-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .sr-section { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
+  .sr-snippet { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sr-highlight { color: var(--accent-hover); font-weight: 600; }
+
+  /* ── Markdown ── */
+  #content-inner h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 8px; letter-spacing: -0.5px; line-height: 1.2; }
+  #content-inner h2 { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-top: 40px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  #content-inner h3 { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-top: 28px; margin-bottom: 10px; }
+  #content-inner h4 { font-size: .9rem; font-weight: 600; color: var(--text-muted); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+  #content-inner p { color: var(--text-muted); margin-bottom: 14px; }
+  #content-inner a { color: var(--accent-hover); text-decoration: none; }
+  #content-inner a:hover { text-decoration: underline; }
+  #content-inner ul, #content-inner ol { margin-left: 20px; margin-bottom: 14px; }
+  #content-inner li { color: var(--text-muted); margin-bottom: 4px; }
+  #content-inner li strong { color: var(--text); }
+  #content-inner strong { color: var(--text); font-weight: 600; }
+  #content-inner blockquote { border-left: 3px solid var(--accent); padding: 10px 16px; background: rgba(201,134,42,.07); border-radius: 0 6px 6px 0; margin-bottom: 16px; }
+  #content-inner blockquote p { color: var(--text); margin: 0; }
+  #content-inner hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  #content-inner code { background: var(--code-bg); color: #f4a63a; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .85em; }
+  #content-inner pre { position: relative; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  #content-inner pre code { background: none; color: inherit; padding: 0; font-size: .85rem; }
+  #content-inner .hljs { padding: 20px; background: var(--code-bg) !important; }
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+    padding: 4px 10px; border-radius: 5px; font-size: 11px; cursor: pointer;
+    opacity: 0; transition: opacity .2s; font-family: inherit;
+  }
+  #content-inner pre:hover .copy-btn { opacity: 1; }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+  /* ── Tables ── */
+  #content-inner table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: .9rem; }
+  #content-inner th { background: var(--bg-card); color: var(--text); padding: 9px 14px; text-align: left; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  #content-inner td { padding: 9px 14px; color: var(--text-muted); border-bottom: 1px solid rgba(42,42,42,.7); }
+  #content-inner tr:hover td { background: var(--bg-card); }
+
+  /* ── Doc header ── */
+  .doc-header { margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .doc-header .breadcrumb { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+  .doc-header .breadcrumb span { color: var(--text-muted); }
+
+  /* ── Home ── */
+  .home-hero { text-align: center; padding: 32px 0 48px; }
+  .home-hero .hero-symbol { font-size: 56px; margin-bottom: 16px; line-height: 1; }
+  .home-hero h1 { font-size: 2.4rem; font-weight: 900; letter-spacing: -1px; margin-bottom: 12px; }
+  .home-hero h1 span { color: var(--accent); }
+  .home-hero p { font-size: 1.05rem; color: var(--text-muted); max-width: 540px; margin: 0 auto 28px; }
+  .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-bottom: 40px; }
+  .home-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; cursor: pointer; transition: all .2s; text-decoration: none; display: block;
+  }
+  .home-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(201,134,42,.1); }
+  .home-card .card-icon { font-size: 22px; margin-bottom: 10px; }
+  .home-card .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .home-card .card-desc { font-size: 12px; color: var(--text-dim); }
+  .stack-pills { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px; }
+  .pill { background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--text-muted); }
+  .pill-accent { border-color: rgba(201,134,42,.4); color: var(--accent); background: rgba(201,134,42,.06); }
+
+  /* ── Pattern decorativo ── */
+  .kente-bar { height: 4px; background: linear-gradient(90deg, #8b1a1a, #c9862a, #2a6e2a, #1a3a8b, #8b1a1a); margin-bottom: 0; }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-100%); z-index: 90; }
+    #sidebar.open { transform: translateX(0); }
+    #content { margin-left: 0; padding: 24px 20px 60px; }
+    #menu-btn { display: block; }
+    #search-wrap { max-width: 180px; }
+    .home-hero h1 { font-size: 1.8rem; }
+    .home-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="kente-bar"></div>
+
+<!-- ══ HEADER ══ -->
+<header id="header">
+  <button id="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div id="logo" onclick="navigate('home')">
+    <div id="logo-icon">✊</div>
+    <span id="logo-text">Wiki<span>preta</span>.org</span>
+    <span id="logo-badge">DOCS</span>
+  </div>
+  <div id="search-wrap">
+    <svg id="search-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="text" placeholder="Buscar na documentação..." autocomplete="off" oninput="handleSearch(this.value)" onkeydown="handleSearchKey(event)">
+    <div id="search-results" style="display:none"></div>
+  </div>
+</header>
+
+<!-- ══ LAYOUT ══ -->
+<div id="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<nav id="sidebar">
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>🗺️</span> Visão Geral <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item active" onclick="navigate('home')"><span class="dot"></span>Início</div>
+      <div class="nav-item" onclick="navigate('setup')"><span class="dot"></span>Setup Guide</div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>📦</span> Produto <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item" onclick="navigate('prd')"><span class="dot"></span>PRD — Requisitos</div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>📐</span> Regras de Dev <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item" onclick="navigate('coding')"><span class="dot"></span>Coding Rules</div>
+      <div class="nav-item" onclick="navigate('components')"><span class="dot"></span>Component Rules</div>
+      <div class="nav-item" onclick="navigate('api')"><span class="dot"></span>API Rules</div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>🗄️</span> Arquitetura <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item" onclick="navigate('database')"><span class="dot"></span>Database Schema</div>
+      <div class="nav-item" onclick="navigate('ai-pipeline')"><span class="dot"></span>AI Pipeline</div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>⚙️</span> Módulos (Skills) <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item" onclick="navigate('skill-content')"><span class="dot"></span>Geração de Verbetes</div>
+      <div class="nav-item" onclick="navigate('skill-topics')"><span class="dot"></span>CRUD de Tópicos</div>
+      <div class="nav-item" onclick="navigate('skill-images')"><span class="dot"></span>Geração de Imagens</div>
+      <div class="nav-item" onclick="navigate('skill-admin')"><span class="dot"></span>Painel Admin</div>
+      <div class="nav-item" onclick="navigate('skill-auth')"><span class="dot"></span>Autenticação</div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-group-header" onclick="toggleGroup(this)">
+      <span>🤖</span> Agentes IA <span class="chevron">▾</span>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item" onclick="navigate('ai-prompt')"><span class="dot"></span>AI Agent Prompt</div>
+      <div class="nav-item" onclick="navigate('features')"><span class="dot"></span>Feature Requests</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main id="content">
+  <div id="content-inner"></div>
+</main>
+</div>
+
+<!-- ══ DOCS CONTENT ══ -->
+
+<script type="text/x-doc" id="doc-setup">
+# Setup Guide — Wikipreta.org
+
+---
+
+## Pré-requisitos
+
+| Ferramenta | Versão | Verificar |
+|---|---|---|
+| Node.js | 20.x LTS | `node -v` |
+| npm | 9.x | `npm -v` |
+| Conta Supabase | — | supabase.com |
+| Chave DeepSeek | — | platform.deepseek.com |
+| Chave Google Gemini | — | aistudio.google.com |
+
+---
+
+## 1. Clonar e Instalar
+
+```bash
+git clone <repo-url> wikipreta
+cd wikipreta
+npm install
+```
+
+---
+
+## 2. Variáveis de Ambiente
+
+Crie `.env` na raiz:
+
+```env
+# ── IA Providers ──────────────────────────────────────
+DEEPSEEK_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
+OLLAMA_BASE_URL=http://localhost:11434
+PREFER_OLLAMA=false
+
+# ── Supabase (Frontend — expostos via VITE_) ──────────
+VITE_SUPABASE_URL=https://<project-id>.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+
+# ── Supabase (Backend — NUNCA prefixar com VITE_) ─────
+SUPABASE_URL=https://<project-id>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# ── Servidor ──────────────────────────────────────────
+PORT=4000
+NODE_ENV=development
+```
+
+> ⚠️ Variáveis `VITE_` são expostas ao browser. Use apenas `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+
+---
+
+## 3. Inicializar o Banco
+
+```bash
+npm run setup:db
+```
+
+---
+
+## 4. Configurar Supabase
+
+### Auth
+- Email: habilitar
+- Criar usuário admin → metadata: `{ "role": "admin" }`
+
+### Storage
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('verbetes-images', 'verbetes-images', true);
+```
+
+### pgvector (RAG)
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+---
+
+## 5. Rodar o Projeto
+
+```bash
+npm run dev:all       # Frontend (3000) + Backend (4000)
+```
+
+O frontend faz proxy de `/api/*` → `http://localhost:4000`.
+
+---
+
+## 6. Scripts
+
+| Comando | Descrição |
+|---|---|
+| `npm run dev:all` | Frontend + Backend simultâneos |
+| `npm run dev` | Apenas frontend (Vite) |
+| `npm run dev:server` | Apenas backend (Express) |
+| `npm run build` | Build de produção |
+| `npm run setup:db` | Inicializar banco |
+
+---
+
+## 7. Estrutura de Pastas
+
+```
+wikipreta.org/
+├── components/     ← Componentes React
+├── pages/          ← Páginas do admin
+├── services/       ← databaseService, geminiService, supabase
+├── context/        ← AuthContext
+├── api/            ← Backend Express
+│   ├── index.js    ← Servidor + todas as rotas
+│   ├── auth.js     ← validateToken (JWT)
+│   └── utils.js    ← slugify, isBanned
+├── App.tsx         ← Router + lógica principal
+└── docs/           ← Esta documentação
+```
+</script>
+
+<script type="text/x-doc" id="doc-prd">
+# PRD — Wikipreta.org
+
+> **Status:** Em produção
+
+---
+
+## 1. Visão
+
+**Wikipreta.org** é uma enciclopédia colaborativa e interativa de **história e cultura negra** — do Brasil, da África e da diáspora africana. Conteúdo gerado por IA, curado por humanos.
+
+> "Um Wikipedia da história negra — gerado por IA, curado por humanos, acessível a todos."
+
+**3 diferenciais:**
+1. **Geração sob demanda** — Qualquer tópico é gerado instantaneamente pela IA e cacheado.
+2. **Interatividade orgânica** — Termos em `**negrito**` viram links para outros verbetes automaticamente.
+3. **Curadoria colaborativa** — Editores autenticados corrigem e enriquecem o conteúdo.
+
+---
+
+## 2. Personas
+
+### Estudante / Pesquisador
+- Pesquisa história africana e afro-brasileira
+- Precisa de fonte acessível em PT-BR
+- Ganho: verbete completo em segundos com links relacionados
+
+### Professor
+- Docente de história, sociologia, estudos afro
+- Precisa de material didático em português
+- Ganho: fonte de referência rápida para aulas
+
+### Curador / Editor (Admin)
+- Historiador, ativista, pesquisador
+- Corrige imprecisões da IA
+- Ganho: interface de edição com histórico de revisões
+
+---
+
+## 3. Funcionalidades
+
+### Enciclopédia Interativa ✅
+- Busca por tópico com geração sob demanda
+- Botão "Aleatório" para descoberta
+- Termos em **negrito** → links clicáveis para outros verbetes
+- Histórico de navegação (localStorage)
+- Compartilhamento nativo (Web Share API)
+
+### Geração por IA Multi-Provider ✅
+- **Texto:** DeepSeek → Gemini 1.5 Flash → Ollama
+- **Imagem:** Gemini Imagen 3.0
+- RAG com base de conhecimento (pgvector)
+- Cache automático no Supabase
+
+### Edição Colaborativa ✅
+- Modo inline via `?edit=true`
+- Cada edição cria revisão auditável
+- Upload de imagem personalizada
+
+### Painel Admin ✅
+- Lista paginada de verbetes (busca + filtros)
+- Gerenciar imagens e usuários
+
+### Temas ✅
+- Dark / Light mode com persistência
+
+---
+
+## 4. Tópicos Pré-definidos (35 seed)
+
+| Categoria | Exemplos |
+|---|---|
+| Figuras BR | Zumbi dos Palmares, Machado de Assis, Carolina Maria de Jesus |
+| Figuras Globais | Nelson Mandela, Angela Davis, Malcolm X |
+| Cultura | Capoeira, Samba, Candomblé, Congada |
+| Intelectuais | Lélia Gonzalez, Abdias do Nascimento, Milton Santos |
+| Resistência | Quilombo, Revolta dos Malês |
+
+---
+
+## 5. Lógica de Slug
+
+```
+"Machado de Assis"   → "machado-assis"
+"Revolta dos Malês"  → "revolta-males"
+"A Luta Quilombola"  → "luta-quilombola"  (artigo removido)
+```
+
+---
+
+## 6. Roadmap
+
+### ✅ Concluído
+- Enciclopédia com geração IA multi-provider
+- RAG com base de conhecimento
+- Sistema de revisões e painel admin
+- Geração de imagens Gemini Imagen
+- Rate limiting + banned terms filter
+
+### ⏳ Próximo
+| Feature | Prioridade |
+|---|---|
+| Busca full-text no conteúdo | Alta |
+| Citações e fontes | Alta |
+| Categorias/tags | Média |
+| Export PDF | Média |
+| API pública | Média |
+| PWA / Offline | Baixa |
+</script>
+
+<script type="text/x-doc" id="doc-coding">
+# Coding Rules — Wikipreta.org
+
+---
+
+## 1. Stack e Versões
+
+| Tecnologia | Versão | Contexto |
+|---|---|---|
+| React | 19.1.0 | Frontend |
+| React Router DOM | 7.10.1 | Roteamento SPA |
+| TypeScript | 5.8.2 | Frontend |
+| Vite | 6.2.0 | Build + dev server |
+| Express.js | 4.18.2 | Backend API |
+| @supabase/supabase-js | 2.105.3 | BD + Auth + Storage |
+| @google/generative-ai | 0.24.1 | Gemini texto |
+| @google/genai | 1.7.0 | Gemini imagens |
+
+---
+
+## 2. Separação Frontend / Backend
+
+```
+Frontend (Vite/React) — porta 3000
+  ├── ✅ VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+  └── ❌ DEEPSEEK_API_KEY, GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+
+Backend (Express) — porta 4000
+  ├── DEEPSEEK_API_KEY, GEMINI_API_KEY
+  └── SUPABASE_SERVICE_ROLE_KEY
+```
+
+**Regra:** Toda chamada de IA passa pelo backend. **Nunca** chamar DeepSeek/Gemini direto do frontend.
+
+---
+
+## 3. Slug — Regra Crítica
+
+**Sempre** usar `slugify()` de `api/utils.js`:
+
+```javascript
+import { slugify } from './utils.js';
+const slug = slugify("Zumbi dos Palmares"); // → "zumbi-palmares"
+```
+
+Nunca escrever lógica de slug manualmente.
+
+---
+
+## 4. Autenticação em Rotas de Escrita
+
+```javascript
+app.post('/api/topics', async (req, res) => {
+  const user = await validateToken(req);
+  if (!user) return res.status(401).json({ error: 'Não autorizado' });
+  // ...
+});
+```
+
+**Rotas que requerem auth:** POST, PUT, DELETE em `/api/topics` e POST em `/api/gemini/image`.
+
+---
+
+## 5. Validação de Conteúdo
+
+```javascript
+const MAX_TITLE = 100;
+const MAX_CONTENT = 10000;
+
+if (!title || title.length > MAX_TITLE) {
+  return res.status(400).json({ error: 'Título inválido' });
+}
+if (isBanned(title)) {
+  return res.status(400).json({ error: 'Título não permitido' });
+}
+```
+
+---
+
+## 6. TypeScript Strict
+
+```typescript
+// ✅ Interface tipada
+interface Topic {
+  id: number;
+  slug: string;
+  title: string;
+  content: string;
+  highlights: string[];
+  source: 'gemini' | 'deepseek' | 'user' | 'mock' | 'ollama';
+}
+
+// ❌ Sem any
+const topic: any = await fetch(...); // proibido
+```
+
+---
+
+## 7. Commits Semânticos
+
+```
+feat:     nova funcionalidade
+fix:      correção de bug
+content:  verbetes ou base de conhecimento
+security: correção de vulnerabilidade
+refactor: refatoração
+docs:     documentação
+style:    CSS/formatação
+chore:    build/config
+```
+</script>
+
+<script type="text/x-doc" id="doc-components">
+# Component Rules — Wikipreta.org
+
+---
+
+## 1. Estrutura
+
+```
+components/           ← Reutilizáveis
+  ContentDisplay.tsx  ← Renderiza verbete com links ⭐ (componente central)
+  SearchBar.tsx       ← Input + botão aleatório
+  AdminLayout.tsx     ← Layout do admin
+  ThemeSwitcher.tsx   ← Dark/Light toggle
+  HistoryPanel.tsx    ← Histórico local
+  LoadingSkeleton.tsx ← Loading state
+
+pages/                ← Páginas admin
+  AdminDashboard.tsx
+  AdminImages.tsx
+  AdminUsers.tsx
+```
+
+---
+
+## 2. ContentDisplay — Componente Central
+
+Converte `**termos**` em links clicáveis:
+
+```tsx
+function parseContent(text: string, onNavigate: (t: string) => void) {
+  return text.split(/\*\*([^*]+)\*\*/g).map((part, i) => {
+    if (i % 2 === 1) {
+      return (
+        <strong key={i}
+          className="cursor-pointer text-amber-600 dark:text-amber-400 hover:underline"
+          onClick={() => onNavigate(part)}
+        >
+          {part}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+```
+
+---
+
+## 3. AuthContext
+
+```tsx
+const { user, isAuthenticated, loading, logout } = useAuth();
+
+// Proteger rotas
+if (!isAuthenticated) return <Navigate to="/login" />;
+```
+
+---
+
+## 4. Rotas (React Router 7)
+
+```tsx
+<Routes>
+  <Route path="/"                  element={<MainApp />} />
+  <Route path="/about"             element={<AboutPage />} />
+  <Route path="/privacy"           element={<PrivacyPage />} />
+  <Route path="/login"             element={<LoginPage />} />
+  <Route path="/admin"             element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+  <Route path="/admin/imagens"     element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
+  <Route path="/admin/usuarios"    element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+</Routes>
+```
+
+**URL params:**
+- `/?topic=zumbi-dos-palmares` — carrega tópico
+- `/?topic=X&edit=true` — modo de edição (auth obrigatório)
+
+---
+
+## 5. ThemeSwitcher
+
+```tsx
+function toggleTheme() {
+  document.documentElement.classList.toggle('dark');
+  localStorage.setItem('theme',
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+}
+```
+
+---
+
+## 6. Loading State
+
+```tsx
+if (loading) return <LoadingSkeleton />;
+if (error)   return <ErrorMessage message={error} />;
+return <ContentDisplay topic={topic} onNavigate={handleNavigate} />;
+```
+</script>
+
+<script type="text/x-doc" id="doc-api">
+# API Rules — Wikipreta.org
+
+---
+
+## 1. Endpoints
+
+```
+GET  /api/ping                  → health check
+POST /api/gemini/content        → gerar verbete (texto)
+POST /api/gemini/image   [auth] → gerar imagem
+GET  /api/topics/:slug          → buscar verbete
+GET  /api/topics?page&limit&search → listar (paginado)
+POST /api/topics         [auth] → criar
+PUT  /api/topics/:slug   [auth] → editar (cria revisão)
+DELETE /api/topics/:slug [auth] → excluir
+GET  /api/random-images         → lista imagens locais
+```
+
+---
+
+## 2. Autenticação no Backend
+
+```javascript
+// api/auth.js
+export async function validateToken(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return null;
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+}
+```
+
+---
+
+## 3. Rate Limiting
+
+```javascript
+import rateLimit from 'express-rate-limit';
+
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,  // 1 minuto
+  max: 30,              // 30 req/min por IP
+}));
+```
+
+---
+
+## 4. Validação de Payload
+
+```javascript
+const MAX_TITLE = 100;
+const MAX_CONTENT = 10000;
+
+if (title.length > MAX_TITLE)   return res.status(400).json({ error: '...' });
+if (content.length > MAX_CONTENT) return res.status(400).json({ error: '...' });
+if (isBanned(title))            return res.status(400).json({ error: '...' });
+```
+
+---
+
+## 5. CORS
+
+```javascript
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://wikipreta.org']
+    : 'http://localhost:3000',
+}));
+```
+
+---
+
+## 6. Padrão de Resposta
+
+```javascript
+// ✅ Sempre este formato
+res.status(400).json({ error: 'Mensagem clara' });
+res.status(401).json({ error: 'Não autorizado' });
+res.status(404).json({ error: 'Não encontrado' });
+
+// ❌ Nunca expor stack trace
+res.status(500).json({ error: error.stack }); // PROIBIDO
+```
+
+---
+
+## 7. Serviços Frontend
+
+```typescript
+// services/databaseService.ts — NUNCA chamar /api/* direto dos componentes
+export const databaseService = {
+  async getTopic(slug: string): Promise<Topic | null>,
+  async saveTopic(topic: Partial<Topic>): Promise<Topic>,
+  async updateTopic(slug: string, data: Partial<Topic>): Promise<Topic>,
+  async deleteTopic(slug: string): Promise<void>,
+  async listTopics(opts: ListOptions): Promise<{ topics: Topic[]; total: number }>,
+};
+```
+</script>
+
+<script type="text/x-doc" id="doc-database">
+# Database Schema — Wikipreta.org
+
+> Supabase (PostgreSQL) + pgvector para RAG
+
+---
+
+## Diagrama
+
+```
+topics (1:N) revisions
+topics — leitura pública, escrita autenticada
+knowledge_base — RAG (pgvector)
+storage/verbetes-images — imagens geradas
+```
+
+---
+
+## `topics`
+
+```sql
+CREATE TABLE topics (
+  id              BIGSERIAL PRIMARY KEY,
+  slug            TEXT UNIQUE NOT NULL,
+  title           TEXT NOT NULL,
+  content         TEXT,
+  highlights      JSONB DEFAULT '[]'::jsonb,
+  related_topics  JSONB DEFAULT '[]'::jsonb,
+  image_url       TEXT,
+  source          TEXT DEFAULT 'gemini'
+                    CHECK (source IN ('gemini','deepseek','user','mock','ollama')),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_topics_slug ON topics(slug);
+CREATE INDEX idx_topics_title ON topics
+  USING gin(to_tsvector('portuguese', title));
+```
+
+---
+
+## `revisions`
+
+```sql
+CREATE TABLE revisions (
+  id           BIGSERIAL PRIMARY KEY,
+  topic_id     BIGINT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  content      TEXT NOT NULL,       -- conteúdo ANTERIOR à edição
+  editor_email TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_revisions_topic_id ON revisions(topic_id);
+```
+
+---
+
+## `knowledge_base` (RAG)
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE knowledge_base (
+  id        BIGSERIAL PRIMARY KEY,
+  content   TEXT NOT NULL,
+  embedding VECTOR(384),
+  metadata  JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_kb_embedding
+  ON knowledge_base USING ivfflat (embedding vector_cosine_ops);
+```
+
+---
+
+## RLS
+
+```sql
+-- topics: leitura pública, escrita autenticada
+ALTER TABLE topics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public read" ON topics FOR SELECT TO public USING (true);
+CREATE POLICY "auth write"  ON topics FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "auth update" ON topics FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "auth delete" ON topics FOR DELETE TO authenticated USING (true);
+
+-- revisions: leitura pública
+ALTER TABLE revisions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public read" ON revisions FOR SELECT TO public USING (true);
+CREATE POLICY "auth insert" ON revisions FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+---
+
+## Storage: `verbetes-images`
+
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('verbetes-images', 'verbetes-images', true);
+```
+
+| | Leitura | Escrita |
+|---|---|---|
+| `topics` | Pública | Autenticado |
+| `revisions` | Pública | Autenticado |
+| `knowledge_base` | Pública | Service Role |
+| Storage | Pública | Autenticado |
+</script>
+
+<script type="text/x-doc" id="doc-ai-pipeline">
+# AI Pipeline — Wikipreta.org
+
+> Como verbetes são gerados: RAG + multi-provider + cache.
+
+---
+
+## Fluxo Completo
+
+```
+Busca: "Zumbi dos Palmares"
+  ↓
+[1] Cache check — slug existe no banco?
+    └── SIM → retorna { cached: true }
+    └── NÃO ↓
+
+[2] RAG Context
+    ├── Ollama embed(query) → vector(384)
+    └── pgvector search → top-5 trechos relevantes
+
+[3] Geração de Texto
+    ├── Tenta DeepSeek
+    ├── Falha → Gemini 1.5 Flash
+    └── Falha → Ollama (se PREFER_OLLAMA=true)
+
+[4] Extração de Highlights
+    └── regex /\*\*([^*]+)\*\*/g → string[]
+
+[5] Cache no Banco
+    └── INSERT INTO topics
+
+[6] Retorno
+    └── { text, highlights[], relatedTopics[], source, cached: false }
+```
+
+---
+
+## Providers de Texto
+
+| Ordem | Provider | Env Var |
+|---|---|---|
+| 1 (primário) | DeepSeek | `DEEPSEEK_API_KEY` |
+| 2 (fallback) | Gemini 1.5 Flash | `GEMINI_API_KEY` |
+| 3 (opcional) | Ollama | `OLLAMA_BASE_URL` |
+
+---
+
+## System Prompt
+
+```
+Você é um historiador especialista em história e cultura negra africana e afro-brasileira.
+
+Escreva um verbete enciclopédico sobre: {TOPIC}
+
+Contexto (base de conhecimento):
+{RAG_CONTEXT}
+
+Regras OBRIGATÓRIAS:
+1. Português PT-BR, linguagem acessível
+2. Use **negrito** em TODOS os termos importantes
+3. 300-600 palavras
+4. Sem títulos markdown (##)
+5. Apenas fatos históricos verificados
+```
+
+---
+
+## Extração de Highlights
+
+```javascript
+function extractHighlights(text) {
+  const matches = text.match(/\*\*([^*]+)\*\*/g) ?? [];
+  return [...new Set(matches.map(m => m.replace(/\*\*/g, '').trim()))];
+}
+```
+
+---
+
+## RAG
+
+```javascript
+async function buildRagContext(topic) {
+  const embedding = await ollamaEmbed(topic);
+  const { data } = await supabase.rpc('search_knowledge', {
+    query_embedding: embedding,
+    match_threshold: 0.7,
+    match_count: 5,
+  });
+  return data?.map(d => d.content).join('\n\n') ?? '';
+}
+```
+
+> Se Ollama indisponível, gera **sem RAG** — funciona normalmente.
+
+---
+
+## Provider de Imagem
+
+```javascript
+// Gemini Imagen 3.0
+const prompt = `Ilustração artística sobre: ${topic}.
+  Estilo afro-brasileiro, paleta vibrante, sem texto na imagem.`;
+
+const { generatedImages } = await genai.models.generateImages({
+  model: 'imagen-3.0-generate-011',
+  prompt,
+  config: { numberOfImages: 1 }
+});
+
+// Upload para Supabase Storage → URL pública
+```
+
+**Fallback:** Imagens locais em `public/assets/images/random/` (12 imagens).
+</script>
+
+<script type="text/x-doc" id="doc-skill-content">
+# Skill: Geração de Verbetes
+
+> Módulo central — gera conteúdo enciclopédico sob demanda com IA.
+
+---
+
+## Fluxo
+
+```
+1. SearchBar.onSearch("Carolina Maria de Jesus")
+2. App.tsx → loadTopic(slug)
+3. databaseService.getTopic(slug) → GET /api/topics/:slug
+4. 404 → geminiService.generateContent(topic)
+5. POST /api/gemini/content → DeepSeek → cache no banco
+6. ContentDisplay renderiza com links interativos
+```
+
+---
+
+## Interface
+
+```typescript
+interface ContentResponse {
+  text: string;
+  highlights: string[];
+  relatedTopics: string[];
+  source: 'deepseek' | 'gemini' | 'ollama' | 'cached';
+  cached: boolean;
+}
+```
+
+---
+
+## Arquivos
+
+| Arquivo | Função |
+|---|---|
+| `api/index.js` | POST /api/gemini/content |
+| `services/geminiService.ts` | Proxy frontend |
+| `services/databaseService.ts` | getTopic, saveTopic |
+| `components/ContentDisplay.tsx` | Renderização |
+| `App.tsx` | Orquestração |
+</script>
+
+<script type="text/x-doc" id="doc-skill-topics">
+# Skill: CRUD de Tópicos
+
+---
+
+## Modelo
+
+```typescript
+interface Topic {
+  id: number;
+  slug: string;            // accent-insensitive, sem artigos
+  title: string;
+  content: string;         // texto com **negrito**
+  highlights: string[];
+  related_topics: string[];
+  image_url: string | null;
+  source: 'gemini' | 'deepseek' | 'user' | 'mock' | 'ollama';
+}
+```
+
+---
+
+## Endpoints
+
+```
+GET  /api/topics/:slug          → { topic, revisions[] }
+GET  /api/topics?page&search    → { topics[], total, page, totalPages }
+POST /api/topics         [auth] → cria (valida slug único + banned terms)
+PUT  /api/topics/:slug   [auth] → edita (cria revisão automática)
+DELETE /api/topics/:slug [auth] → exclui + revisions cascade
+```
+
+---
+
+## Modo de Edição
+
+```
+URL: /?topic=zumbi-palmares&edit=true
+Requer: isAuthenticated = true
+Ação: ContentDisplay mostra toolbar → edição inline → PUT /api/topics/:slug
+```
+
+Cada `PUT` cria automaticamente uma revisão com o conteúdo anterior.
+
+---
+
+## Arquivos
+
+| Arquivo | Função |
+|---|---|
+| `api/index.js` | Rotas CRUD |
+| `services/databaseService.ts` | Interface frontend |
+| `pages/AdminDashboard.tsx` | Lista + paginação |
+| `api/utils.js` | slugify, isBanned |
+</script>
+
+<script type="text/x-doc" id="doc-skill-images">
+# Skill: Geração de Imagens
+
+---
+
+## Fluxo
+
+```
+1. Clique "Gerar Imagem" [auth obrigatório]
+2. POST /api/gemini/image { topic }
+3. Gemini Imagen 3.0 → base64
+4. Upload → Supabase Storage (verbetes-images)
+5. URL pública → UPDATE topics SET image_url
+```
+
+---
+
+## Prompt de Imagem
+
+```javascript
+`Ilustração artística de alta qualidade sobre: ${topic}.
+Estilo: arte afro-brasileira contemporânea, paleta vibrante,
+inspirado em Emiliano Di Cavalcanti e Djanira.
+Sem texto, sem letras na imagem.`
+```
+
+---
+
+## Fallback Local
+
+Quando a geração falha:
+- `GET /api/random-images` → lista de arquivos em `public/assets/images/random/`
+- 12 imagens culturais predefinidas
+- Seleção aleatória no frontend
+
+---
+
+## Arquivos
+
+| Arquivo | Função |
+|---|---|
+| `api/index.js` | POST /api/gemini/image + GET /api/random-images |
+| `services/geminiService.ts` | Proxy frontend |
+| `App.tsx` | Toolbar de upload + exibição |
+| `public/assets/images/random/` | Fallbacks |
+</script>
+
+<script type="text/x-doc" id="doc-skill-admin">
+# Skill: Painel Admin
+
+---
+
+## Rotas
+
+| Rota | Componente | Acesso |
+|---|---|---|
+| `/admin` | AdminDashboard | Autenticado |
+| `/admin/imagens` | AdminImages | Autenticado |
+| `/admin/usuarios` | AdminUsers | Admin only |
+
+---
+
+## AdminDashboard
+
+```tsx
+// Busca com debounce 300ms + paginação
+const [page, setPage] = useState(1);
+const ITEMS_PER_PAGE = 20;
+
+useEffect(() => {
+  const t = setTimeout(() => fetchTopics(search, page), 300);
+  return () => clearTimeout(t);
+}, [search, page]);
+```
+
+Colunas: Título · Slug · Source (badge) · Criado em · Editar · Excluir
+
+---
+
+## Editar verbete via Admin
+
+1. Clique "Editar" → navega para `/?topic={slug}&edit=true`
+2. App.tsx detecta `edit=true` → toolbar visível
+3. Edição inline → Salvar → `PUT /api/topics/:slug`
+
+---
+
+## AdminLayout
+
+```tsx
+<nav> Verbetes | Imagens | Usuários | [← Enciclopédia] | [Sair] </nav>
+<main>{children}</main>
+```
+</script>
+
+<script type="text/x-doc" id="doc-skill-auth">
+# Skill: Autenticação
+
+> Supabase Auth com JWT. Frontend gerencia sessão; backend valida.
+
+---
+
+## Fluxo de Login
+
+```
+/login → supabase.auth.signInWithPassword({ email, password })
+       → AuthContext armazena user + session
+       → redirect /admin
+```
+
+---
+
+## AuthContext
+
+```tsx
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  logout: () => Promise<void>;
+}
+
+// Hook
+const { user, isAuthenticated } = useAuth();
+```
+
+---
+
+## Enviar Token
+
+```typescript
+const { data: { session } } = await supabase.auth.getSession();
+const token = session?.access_token;
+
+fetch('/api/topics', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: JSON.stringify(data),
+});
+```
+
+---
+
+## Validar no Backend
+
+```javascript
+export async function validateToken(req) {
+  const token = req.headers.authorization?.split(' ')[1];
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user ?? null;
+}
+```
+
+---
+
+## Criar Usuário Admin
+
+Supabase Dashboard → Auth → Users → Add User → Edit → User Metadata:
+```json
+{ "role": "admin" }
+```
+</script>
+
+<script type="text/x-doc" id="doc-ai-prompt">
+# AI Agent Prompt — Wikipreta.org
+
+---
+
+## Prompt Completo
+
+```
+Você é engenheiro sênior no projeto Wikipreta.org.
+
+## Sobre o Projeto
+Enciclopédia colaborativa de história e cultura negra (Brasil, África, diáspora).
+Conteúdo gerado por IA sob demanda, curado por humanos.
+Termos em **negrito** → links para outros verbetes.
+
+## Stack
+Frontend: React 19 + React Router 7 + TypeScript 5.8 + Vite 6.2 + Tailwind
+Backend: Express.js 4 (porta 4000, Node.js ES Modules)
+Banco: Supabase (PostgreSQL + Auth + Storage + pgvector)
+IA Texto: DeepSeek → Gemini 1.5 Flash → Ollama
+IA Imagem: Gemini Imagen 3.0
+Auth: Supabase JWT
+
+## Estrutura
+components/  → React components
+pages/       → Admin pages
+services/    → databaseService, geminiService, supabase
+context/     → AuthContext
+api/         → Express backend (index.js = servidor principal)
+
+## Segurança (INVIOLÁVEL)
+- API keys (DEEPSEEK, GEMINI) APENAS no backend
+- SUPABASE_SERVICE_ROLE_KEY APENAS no backend
+- Variáveis VITE_ são públicas — só VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+- Toda escrita valida JWT via validateToken(req)
+- Títulos validados contra banned terms antes de salvar
+
+## Slug — CRÍTICO
+SEMPRE usar slugify() de api/utils.js. Nunca implementar lógica diferente.
+
+## Pipeline IA
+1. Cache check → 2. RAG (pgvector) → 3. DeepSeek/Gemini/Ollama
+4. Extrai highlights: regex /\*\*([^*]+)\*\*/g → 5. Salva no banco
+
+## System Prompt Verbete
+"PT-BR | **negrito** em todos os termos importantes | 300-600 palavras | sem ## títulos"
+
+## Commits: feat/fix/content/security/refactor/docs/style/chore
+## Idioma: PT-BR | Direto | Plano antes de codar
+```
+
+---
+
+## Versão Curta
+
+```
+Wikipreta = Enciclopédia história negra, IA + curadoria humana
+Stack: React 19 + Vite + Express 4 + Supabase + DeepSeek/Gemini + pgvector
+Segurança: API keys só no backend | JWT validado no backend | banned terms
+Slug: SEMPRE slugify() de api/utils.js
+IA: Cache → RAG → DeepSeek → Gemini → Ollama | **negrito** → highlights
+Commits: feat/fix/content/security/refactor | PT-BR | plano antes de codar
+```
+</script>
+
+<script type="text/x-doc" id="doc-features">
+# Feature Requests — Wikipreta.org
+
+---
+
+## Template
+
+```markdown
+## [F00X] Nome da Feature
+**Tipo:** Nova Feature | Melhoria | Bug Fix
+**Módulo:** Enciclopédia | Admin | IA | Auth | Imagens | API
+**Prioridade:** Alta | Média | Baixa
+
+### Descrição
+[2-3 frases]
+
+### Comportamento Esperado
+1. Passo 1
+
+### Schema (se aplicável)
+[SQL]
+
+### Critérios de Aceite
+- [ ] Critério 1
+```
+
+---
+
+## [F001] Busca Full-Text no Conteúdo
+
+**Prioridade:** Alta
+
+```sql
+CREATE INDEX idx_topics_content ON topics
+  USING gin(to_tsvector('portuguese', content));
+```
+
+Endpoint: `GET /api/search?q=quilombo` → tópicos com trechos destacados.
+
+---
+
+## [F002] Citações e Fontes
+
+**Prioridade:** Alta
+
+```sql
+CREATE TABLE citations (
+  id BIGSERIAL PRIMARY KEY,
+  topic_id BIGINT REFERENCES topics(id) ON DELETE CASCADE,
+  authors TEXT, title TEXT NOT NULL, year INTEGER, url TEXT
+);
+```
+
+Seção "Referências" no final de cada verbete com formato ABNT.
+
+---
+
+## [F003] Categorias e Tags
+
+**Prioridade:** Média
+
+```sql
+ALTER TABLE topics ADD COLUMN categories TEXT[] DEFAULT '{}';
+```
+
+Filtro por categoria na enciclopédia.
+
+---
+
+## [F004] API Pública
+
+**Prioridade:** Média
+
+```
+GET /v1/topics/:slug     [X-API-Key: chave]
+GET /v1/topics?search=   [X-API-Key: chave]
+```
+
+---
+
+## [F005] Export PDF
+
+**Prioridade:** Média
+
+Botão "Exportar PDF" no verbete. Gerado client-side via `pdf-lib` (já no projeto).
+
+---
+
+## [F006] PWA / Offline
+
+**Prioridade:** Baixa
+
+Service Worker + IndexedDB para verbetes visitados. Instalar como app nativo.
+</script>
+
+<!-- ══ JAVASCRIPT ══ -->
+<script>
+const DOCS = {
+  setup:         { id: 'doc-setup',         section: 'Visão Geral',    title: 'Setup Guide' },
+  prd:           { id: 'doc-prd',           section: 'Produto',        title: 'PRD — Requisitos' },
+  coding:        { id: 'doc-coding',        section: 'Regras de Dev',  title: 'Coding Rules' },
+  components:    { id: 'doc-components',    section: 'Regras de Dev',  title: 'Component Rules' },
+  api:           { id: 'doc-api',           section: 'Regras de Dev',  title: 'API Rules' },
+  database:      { id: 'doc-database',      section: 'Arquitetura',    title: 'Database Schema' },
+  'ai-pipeline': { id: 'doc-ai-pipeline',   section: 'Arquitetura',    title: 'AI Pipeline' },
+  'skill-content':{ id: 'doc-skill-content',section: 'Módulos',        title: 'Geração de Verbetes' },
+  'skill-topics': { id: 'doc-skill-topics', section: 'Módulos',        title: 'CRUD de Tópicos' },
+  'skill-images': { id: 'doc-skill-images', section: 'Módulos',        title: 'Geração de Imagens' },
+  'skill-admin':  { id: 'doc-skill-admin',  section: 'Módulos',        title: 'Painel Admin' },
+  'skill-auth':   { id: 'doc-skill-auth',   section: 'Módulos',        title: 'Autenticação' },
+  'ai-prompt':    { id: 'doc-ai-prompt',    section: 'Agentes IA',     title: 'AI Agent Prompt' },
+  features:       { id: 'doc-features',     section: 'Agentes IA',     title: 'Feature Requests' },
+};
+
+marked.setOptions({
+  highlight: (code, lang) => {
+    const l = hljs.getLanguage(lang) ? lang : 'plaintext';
+    return hljs.highlight(code, { language: l }).value;
+  },
+  langPrefix: 'hljs language-',
+  breaks: true, gfm: true,
+});
+const renderer = new marked.Renderer();
+renderer.table = (h, b) => `<div style="overflow-x:auto"><table><thead>${h}</thead><tbody>${b}</tbody></table></div>`;
+marked.use({ renderer });
+
+let currentDoc = 'home';
+
+function navigate(key) {
+  currentDoc = key;
+  document.querySelectorAll('.nav-item').forEach(el =>
+    el.classList.toggle('active', el.getAttribute('onclick')?.includes(`'${key}'`))
+  );
+  renderContent(key);
+  window.scrollTo(0, 0);
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search').value = '';
+  if (window.innerWidth <= 768) closeSidebar();
+  history.pushState({}, '', `#${key}`);
+}
+
+function renderContent(key) {
+  const el = document.getElementById('content-inner');
+  if (key === 'home') { el.innerHTML = renderHome(); return; }
+  const doc = DOCS[key];
+  if (!doc) return;
+  const raw = document.getElementById(doc.id)?.textContent?.trim() ?? '';
+  el.innerHTML = `<div class="doc-header"><div class="breadcrumb">${doc.section} <span>›</span> ${doc.title}</div></div>${marked.parse(raw)}`;
+  el.querySelectorAll('pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn'; btn.textContent = 'Copiar';
+    btn.onclick = () => {
+      navigator.clipboard.writeText(pre.querySelector('code')?.textContent ?? '').then(() => {
+        btn.textContent = 'Copiado!'; btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+      });
+    };
+    pre.appendChild(btn);
+  });
+}
+
+function renderHome() {
+  const cards = [
+    { key:'setup',         icon:'🚀', title:'Setup Guide',         desc:'Configure o ambiente do zero' },
+    { key:'prd',           icon:'📖', title:'PRD',                  desc:'Visão, personas e roadmap' },
+    { key:'coding',        icon:'📐', title:'Coding Rules',         desc:'Stack e convenções' },
+    { key:'api',           icon:'🔌', title:'API Rules',            desc:'Express backend e endpoints' },
+    { key:'database',      icon:'🗄️', title:'Database Schema',      desc:'Tabelas, RLS, pgvector' },
+    { key:'ai-pipeline',   icon:'🧠', title:'AI Pipeline',          desc:'RAG + multi-provider + cache' },
+    { key:'skill-content', icon:'✍️', title:'Geração de Verbetes',  desc:'Fluxo completo de geração IA' },
+    { key:'skill-topics',  icon:'📋', title:'CRUD de Tópicos',      desc:'Criar, editar, revisões' },
+    { key:'skill-images',  icon:'🎨', title:'Imagens',              desc:'Gemini Imagen + fallback' },
+    { key:'skill-admin',   icon:'⚙️', title:'Painel Admin',         desc:'Gestão de verbetes e users' },
+    { key:'skill-auth',    icon:'🔐', title:'Autenticação',         desc:'Supabase JWT + contexto' },
+    { key:'ai-prompt',     icon:'🤖', title:'AI Agent Prompt',      desc:'System prompt completo' },
+  ];
+  const pills = ['React 19','Vite 6','Express.js','Supabase','pgvector','DeepSeek','Gemini','TypeScript','Tailwind CSS'];
+  return `
+    <div class="home-hero">
+      <div class="hero-symbol">✊🏿</div>
+      <h1>Wiki<span>preta</span>.org<br>Documentação Técnica</h1>
+      <p>Enciclopédia colaborativa de história e cultura negra com geração de conteúdo por IA, curadoria humana e busca interativa.</p>
+      <div class="stack-pills">
+        ${pills.map(p => `<span class="pill">${p}</span>`).join('')}
+      </div>
+    </div>
+    <h2 style="margin-top:0">Índice</h2>
+    <div class="home-grid">
+      ${cards.map(c => `
+        <a class="home-card" onclick="navigate('${c.key}');return false;" href="#">
+          <div class="card-icon">${c.icon}</div>
+          <div class="card-title">${c.title}</div>
+          <div class="card-desc">${c.desc}</div>
+        </a>
+      `).join('')}
+    </div>
+    <h2>Arquitetura de Alto Nível</h2>
+    <table>
+      <thead><tr><th>Camada</th><th>Tecnologia</th><th>Responsabilidade</th></tr></thead>
+      <tbody>
+        <tr><td>Frontend</td><td>React 19 + Vite</td><td>SPA, renderização, roteamento</td></tr>
+        <tr><td>Backend</td><td>Express.js 4</td><td>Proxy IA, CRUD, auth, rate limiting</td></tr>
+        <tr><td>Banco</td><td>Supabase PostgreSQL</td><td>Verbetes, revisões, RAG (pgvector)</td></tr>
+        <tr><td>IA Texto</td><td>DeepSeek → Gemini → Ollama</td><td>Geração de verbetes</td></tr>
+        <tr><td>IA Imagem</td><td>Gemini Imagen 3.0</td><td>Imagens dos verbetes</td></tr>
+        <tr><td>Auth</td><td>Supabase JWT</td><td>Sessão frontend + validação backend</td></tr>
+        <tr><td>Storage</td><td>Supabase Storage</td><td>Imagens geradas (verbetes-images)</td></tr>
+      </tbody>
+    </table>
+    <h2>Regras de Segurança</h2>
+    <table>
+      <thead><tr><th>Regra</th><th>Detalhe</th></tr></thead>
+      <tbody>
+        <tr><td><strong>API Keys no Backend</strong></td><td>DEEPSEEK_API_KEY e GEMINI_API_KEY nunca no frontend</td></tr>
+        <tr><td><strong>Service Role Key</strong></td><td>SUPABASE_SERVICE_ROLE_KEY apenas no backend (Node.js)</td></tr>
+        <tr><td><strong>JWT em toda escrita</strong></td><td>validateToken(req) obrigatório em POST/PUT/DELETE</td></tr>
+        <tr><td><strong>Rate Limiting</strong></td><td>30 req/min por IP via express-rate-limit</td></tr>
+        <tr><td><strong>Banned Terms</strong></td><td>Filtro de 1000+ termos em todos os títulos</td></tr>
+        <tr><td><strong>Slug Canônico</strong></td><td>Sempre slugify() de api/utils.js</td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function handleSearch(query) {
+  const box = document.getElementById('search-results');
+  if (!query.trim()) { box.style.display = 'none'; return; }
+  const q = query.toLowerCase();
+  const results = [];
+  Object.entries(DOCS).forEach(([key, doc]) => {
+    const raw = document.getElementById(doc.id)?.textContent ?? '';
+    const idx = raw.toLowerCase().indexOf(q);
+    if (idx !== -1) {
+      const snippet = raw.substring(Math.max(0, idx - 30), idx + 80).replace(/\n/g, ' ');
+      const highlighted = snippet.replace(new RegExp(query, 'gi'), m => `<span class="sr-highlight">${m}</span>`);
+      results.push({ key, doc, snippet: highlighted });
+    }
+  });
+  box.innerHTML = results.length
+    ? results.slice(0, 8).map(r => `
+        <div class="search-result" onclick="navigate('${r.key}')">
+          <div class="sr-section">${r.doc.section}</div>
+          <div class="sr-title">${r.doc.title}</div>
+          <div class="sr-snippet">${r.snippet}</div>
+        </div>`).join('')
+    : `<div class="search-result"><div class="sr-title" style="color:var(--text-dim)">Nenhum resultado para "${query}"</div></div>`;
+  box.style.display = 'block';
+}
+
+function handleSearchKey(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('search').value = '';
+  }
+}
+
+function toggleGroup(header) {
+  header.classList.toggle('collapsed');
+  header.nextElementSibling.classList.toggle('hidden');
+}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-wrap'))
+    document.getElementById('search-results').style.display = 'none';
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = location.hash.replace('#', '');
+  navigate(hash && DOCS[hash] ? hash : 'home');
+});
+window.addEventListener('popstate', () => {
+  const hash = location.hash.replace('#', '');
+  navigate(hash && DOCS[hash] ? hash : 'home');
+});
+</script>
+</body>
+</html>

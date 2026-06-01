@@ -41,6 +41,61 @@ if (!API_KEY) {
   console.warn('⚠️  GEMINI_API_KEY is not set. The server will run in mock mode.');
 }
 
+// ============= Banned Terms Cache & Helper =============
+let cachedBannedTerms = new Set();
+let lastCacheUpdate = 0;
+const CACHE_TTL = 60 * 1000; // 1 minute cache TTL
+
+async function getBannedTerms() {
+  const now = Date.now();
+  if (now - lastCacheUpdate > CACHE_TTL || cachedBannedTerms.size === 0) {
+    try {
+      const { data, error } = await supabase
+        .from('banned_terms')
+        .select('term');
+      if (!error && data) {
+        cachedBannedTerms = new Set(data.map(d => d.term.toLowerCase().trim()));
+        lastCacheUpdate = now;
+        console.log(`Loaded ${cachedBannedTerms.size} banned terms from database.`);
+      } else if (error) {
+        console.error('Failed to load banned terms from Supabase:', error.message);
+      }
+    } catch (err) {
+      console.error('Failed to load banned terms:', err);
+    }
+  }
+  return cachedBannedTerms;
+}
+
+async function isBannedDb(topic) {
+  if (!topic) return false;
+  
+  const normalized = topic.toLowerCase().trim();
+
+  // 1. Check local static list (fast check)
+  if (isBanned(normalized)) return true;
+
+  // 2. Check dynamic list from DB (cached)
+  try {
+    const dbTerms = await getBannedTerms();
+    for (const term of dbTerms) {
+      if (term.endsWith(' ')) {
+        const trimmed = term.trim();
+        if (normalized === trimmed || normalized.startsWith(term) || normalized.includes(` ${term}`)) {
+          return true;
+        }
+      } else if (normalized.includes(term)) {
+        return true;
+      }
+    }
+  } catch (err) {
+    console.error('Error in isBannedDb:', err);
+  }
+  
+  return false;
+}
+
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -50,8 +105,8 @@ const ai = !useMock ? new GoogleGenerativeAI(API_KEY) : null;
 
 // ============= Health Check =============
 app.get('/api/ping', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
     hasGemini: !!API_KEY,
@@ -72,7 +127,7 @@ async function getTopicBySlug(slug) {
     .select('*')
     .eq('slug', slug)
     .single();
-  
+
   if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
     console.error('Error fetching topic:', error);
   }
@@ -105,7 +160,7 @@ async function updateTopic(slug, data) {
 
   // Get current topic for revision
   const topic = await getTopicBySlug(slug);
-  
+
   if (topic && content && content !== topic.content) {
     // Save revision
     await supabase.from('revisions').insert([{
@@ -138,7 +193,7 @@ async function generateWithDeepSeek(prompt) {
     console.log('Skipping DeepSeek: API key missing or placeholder used.');
     return null;
   }
-  
+
   try {
     console.log('Using DeepSeek for generation...');
     const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -153,7 +208,7 @@ async function generateWithDeepSeek(prompt) {
         stream: false
       })
     });
-    
+
     if (!response.ok) throw new Error(`DeepSeek error: ${response.statusText}`);
     const data = await response.json();
     return data.choices[0].message.content;
@@ -185,7 +240,7 @@ async function generateWithOllama(prompt) {
 
 async function getContextFromKnowledge(topic) {
   const OLLAMA_LOCAL = 'http://127.0.0.1:11434';
-  
+
   try {
     let embedding;
     // Tenta primeiro o endpoint universal (mais estável)
@@ -194,7 +249,7 @@ async function getContextFromKnowledge(topic) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'nomic-embed-text', prompt: topic })
     });
-    
+
     if (res1.ok) {
       const data = await res1.json();
       embedding = data.embedding;
@@ -221,7 +276,7 @@ async function getContextFromKnowledge(topic) {
       console.error("Erro na busca vetorial:", error.message);
       return "";
     }
-    
+
     if (!documents || documents.length === 0) {
       console.log(`ℹ️ Nenhum fragmento de conhecimento encontrado para: "${topic}" (Threshold: 0.35)`);
       return "";
@@ -236,109 +291,8 @@ async function getContextFromKnowledge(topic) {
   }
 }
 
-// ============= Gemini API Proxies =============
-app.post('/api/gemini/content', async (req, res) => {
-  const { topic } = req.body || {};
-  if (!topic) return res.status(400).json({ error: 'Missing topic' });
+// Note: The first duplicate definition of POST /api/gemini/content was removed to fix rate-limiting vulnerability.
 
-  if (isBanned(topic)) {
-    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
-  }
-
-  // Check DB first
-  const slug = slugify(topic);
-  const existingTopic = await getTopicBySlug(slug);
-
-  if (existingTopic && existingTopic.source === 'gemini') {
-    return res.json({
-      text: existingTopic.content,
-      highlights: existingTopic.highlights || [],
-      relatedTopics: existingTopic.related_topics || [],
-      generatedAt: existingTopic.updated_at,
-      source: 'db',
-      cached: true,
-    });
-  }
-
-  // 1. Busca contexto nos documentos próprios (RAG)
-  const knowledgeContext = await getContextFromKnowledge(topic);
-
-  if (!ai && !DEEPSEEK_API_KEY && !PREFER_OLLAMA) return res.status(500).json({ error: 'AI client not initialized' });
-
-  // 2. Constrói o prompt priorizando as fontes oficiais
-  const prompt = knowledgeContext 
-    ? `Você é um historiador especialista da WikiPreta. Use as referências oficiais abaixo para compor sua resposta.
-    
-    FONTES OFICIAIS (CONTEXTO):
-    ${knowledgeContext}
-    
-    TAREFA:
-    Escreva um parágrafo enciclopédico e educativo sobre "${topic}" baseando-se prioritariamente nas fontes acima. 
-    Se a informação não estiver nas fontes, use seu conhecimento base de forma complementar.
-    Mantenha o tom respeitoso e focado na cultura negra.
-    Destaque termos importantes com dois asteriscos (ex: **Zumbi dos Palmares**).`
-    : `Forneça uma biografia ou descrição enciclopédica concisa, em um único parágrafo, sobre "${topic}" no contexto da história e cultura negra do Brasil, da África ou da diáspora. O texto deve ser informativo, direto e respeitoso. Destaque outras personalidades, lugares ou conceitos relevantes envolvendo-os com dois asteriscos (ex: **Zumbi dos Palmares** ou **Quilombo**). Não inclua o nome do tópico no início do parágrafo.`;
-
-  try {
-    let generatedText = null;
-    let source = 'unknown';
-
-    // 1. Try DeepSeek first (Primary)
-    if (!generatedText) {
-      generatedText = await generateWithDeepSeek(prompt);
-      if (generatedText) {
-        source = 'deepseek';
-        console.log('Successfully generated with DeepSeek');
-      }
-    }
-
-    // 2. Try Gemini as backup
-    if (!generatedText && ai) {
-      try {
-        console.log('Using Gemini (1.5 Flash) as backup...');
-        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const response = await model.generateContent(prompt);
-        generatedText = response.response.text().trim();
-        source = 'gemini';
-        console.log('Successfully generated with Gemini');
-      } catch (geminiError) {
-        console.error('Gemini fallback failed:', geminiError.message);
-      }
-    }
-
-    // 3. Fallback to Ollama if others failed
-    if (!generatedText) {
-      console.log('Using Ollama as final fallback...');
-      generatedText = await generateWithOllama(prompt);
-      if (generatedText) source = 'ollama';
-    }
-
-    if (!generatedText) {
-      return res.status(500).json({ error: 'Failed to generate content from any provider' });
-    }
-
-    const highlightMatches = generatedText.match(/\*\*([^*]+)\*\*/g) || [];
-    const highlights = highlightMatches.map(h => h.replace(/\*\*/g, ''));
-
-    // Save to DB
-    if (!existingTopic) {
-      await createTopic({ slug, title: topic, content: generatedText, highlights, relatedTopics: highlights, source });
-    } else {
-      await updateTopic(slug, { content: generatedText, highlights, relatedTopics: highlights });
-    }
-
-    return res.json({
-      text: generatedText,
-      highlights,
-      relatedTopics: highlights,
-      generatedAt: new Date().toISOString(),
-      source: source,
-    });
-  } catch (error) {
-    console.error('Error generating content:', error);
-    return res.status(500).json({ error: 'Failed to generate content' });
-  }
-});
 
 // ============= Security Middlewares (Zero-Trust) =============
 
@@ -431,8 +385,8 @@ app.post('/api/gemini/content', async (req, res) => {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Missing topic' });
 
-  if (isBanned(topic)) {
-    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
+  if (await isBannedDb(topic)) {
+    return res.status(403).json({ error: 'Este termo não existe na Wikipreta.' });
   }
 
   // Check DB first
@@ -456,7 +410,7 @@ app.post('/api/gemini/content', async (req, res) => {
   if (!ai && !DEEPSEEK_API_KEY && !PREFER_OLLAMA) return res.status(500).json({ error: 'AI client not initialized' });
 
   // 2. Constrói o prompt priorizando as fontes oficiais
-  const prompt = knowledgeContext 
+  const prompt = knowledgeContext
     ? `Você é um historiador especialista da WikiPreta. Use as referências oficiais abaixo para compor sua resposta.
     
     FONTES OFICIAIS (CONTEXTO):
@@ -535,8 +489,8 @@ app.post('/api/gemini/image', requireSupabaseAuth, async (req, res) => {
   const { topic } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Missing topic' });
 
-  if (isBanned(topic)) {
-    return res.status(403).json({ error: 'Este termo não é permitido na Wikipreta.' });
+  if (await isBannedDb(topic)) {
+    return res.status(403).json({ error: 'Este termo não existe na Wikipreta.' });
   }
 
   // Check DB first for cached image
@@ -581,16 +535,16 @@ app.post('/api/gemini/image', requireSupabaseAuth, async (req, res) => {
     if (response.generatedImages && response.generatedImages.length > 0) {
       const base64ImageBytes = response.generatedImages[0].image.imageBytes;
       const buffer = Buffer.from(base64ImageBytes, 'base64');
-      
+
       const filename = `${slug}-${Date.now()}.png`;
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('verbetes-images')
-          .upload(filename, buffer, {
-            contentType: 'image/png',
-            upsert: true
-          });
+        .from('verbetes-images')
+        .upload(filename, buffer, {
+          contentType: 'image/png',
+          upsert: true
+        });
 
       if (uploadError) {
         console.error('Supabase Storage Upload Error:', uploadError.message);
@@ -658,7 +612,7 @@ app.get('/api/topics', async (req, res) => {
     let { page = 1, limit = 10, search = '' } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
-    
+
     // 🔒 SEGURANÇA [VULN-DoS]: Capa o limite de paginação para evitar dumping total de dados (Law 3)
     limit = Math.min(limit, 100);
     const offset = (page - 1) * limit;
@@ -679,11 +633,11 @@ app.get('/api/topics', async (req, res) => {
 
     return res.json({
       topics,
-      pagination: { 
-        page, 
-        limit, 
-        total: count, 
-        pages: Math.ceil(count / limit) 
+      pagination: {
+        page,
+        limit,
+        total: count,
+        pages: Math.ceil(count / limit)
       },
     });
   } catch (error) {
@@ -723,6 +677,10 @@ app.post('/api/topics', requireSupabaseAuth, validateTopicPayload, async (req, r
   try {
     const { title, content, highlights = [], relatedTopics = [], imageUrl = null, source = 'user' } = req.body;
     if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
+
+    if (await isBannedDb(title)) {
+      return res.status(403).json({ error: 'Este termo não existe na Wikipreta.' });
+    }
 
     const slug = slugify(title);
     const existing = await getTopicBySlug(slug);
@@ -784,12 +742,178 @@ const requireAdmin = (req, res, next) => {
   }
 };
 
+// Middleware to enforce administrator or editor privileges
+const requireAdminOrEditor = (req, res, next) => {
+  const role = req.user?.user_metadata?.role || 'editor';
+  if (req.user && (role === 'admin' || role === 'editor')) {
+    next();
+  } else {
+    // 🔒 SEGURANÇA [VULN-BAC]: Nega acesso caso o usuário autenticado não seja administrador ou editor
+    return res.status(403).json({ error: 'Access denied: Requires admin or editor role' });
+  }
+};
+
 // ============= Admin Endpoints =============
+// --- Banned Terms Admin Routes ---
+app.get('/api/admin/banned-terms', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('banned_terms')
+      .select('*')
+      .order('term', { ascending: true });
+    if (error) throw error;
+    return res.json(data || []);
+  } catch (error) {
+    console.error('Error fetching banned terms:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch banned terms' });
+  }
+});
+
+app.post('/api/admin/banned-terms', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { term } = req.body;
+    if (!term || typeof term !== 'string' || term.trim().length === 0) {
+      return res.status(400).json({ error: 'Term is required' });
+    }
+
+    const normalizedTerm = term.trim().toLowerCase();
+
+    const { data, error } = await supabase
+      .from('banned_terms')
+      .insert([{ term: normalizedTerm }])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Term already banned' });
+      }
+      throw error;
+    }
+
+    // Update cache
+    cachedBannedTerms.add(normalizedTerm);
+
+    return res.status(201).json(data);
+  } catch (error) {
+    console.error('Error adding banned term:', error);
+    return res.status(500).json({ error: error.message || 'Failed to add banned term' });
+  }
+});
+
+app.delete('/api/admin/banned-terms/:id', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get the term first so we can remove it from cache
+    const { data: termData, error: fetchError } = await supabase
+      .from('banned_terms')
+      .select('term')
+      .eq('id', id)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+    const { error } = await supabase
+      .from('banned_terms')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    if (termData) {
+      cachedBannedTerms.delete(termData.term);
+    }
+
+    return res.json({ message: 'Term unbanned successfully' });
+  } catch (error) {
+    console.error('Error deleting banned term:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete banned term' });
+  }
+});
+
+app.post('/api/admin/banned-terms/delete-bulk', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Array of ids is required' });
+    }
+
+    // Get terms for the given IDs so we can remove them from cache
+    const { data: termsData, error: fetchError } = await supabase
+      .from('banned_terms')
+      .select('term')
+      .in('id', ids);
+
+    if (fetchError) throw fetchError;
+
+    const { error: deleteError } = await supabase
+      .from('banned_terms')
+      .delete()
+      .in('id', ids);
+
+    if (deleteError) throw deleteError;
+
+    // Update cache
+    if (termsData) {
+      termsData.forEach(t => cachedBannedTerms.delete(t.term));
+    }
+
+    return res.json({ message: `${ids.length} termos desbanidos com sucesso.` });
+  } catch (error) {
+    console.error('Error deleting bulk banned terms:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete terms in bulk' });
+  }
+});
+
+app.post('/api/admin/banned-terms/bulk', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { terms } = req.body;
+    if (!terms || !Array.isArray(terms)) {
+      return res.status(400).json({ error: 'Array of terms is required' });
+    }
+
+    // Clean and validate terms
+    const cleanedTerms = terms
+      .map(t => typeof t === 'string' ? t.trim().toLowerCase() : '')
+      .filter(t => t.length > 0 && !t.startsWith('#'));
+
+    if (cleanedTerms.length === 0) {
+      return res.status(400).json({ error: 'No valid terms to import' });
+    }
+
+    const batchSize = 100;
+    const inserted = [];
+    
+    for (let i = 0; i < cleanedTerms.length; i += batchSize) {
+      const batch = cleanedTerms.slice(i, i + batchSize).map(term => ({ term }));
+      const { data, error } = await supabase
+        .from('banned_terms')
+        .upsert(batch, { onConflict: 'term' })
+        .select();
+      
+      if (error) throw error;
+      if (data && Array.isArray(data)) inserted.push(...data);
+    }
+
+    // Refresh memory cache
+    cleanedTerms.forEach(term => cachedBannedTerms.add(term));
+
+    return res.status(201).json({ 
+      message: `${cleanedTerms.length} termos processados com sucesso.`,
+      count: inserted.length 
+    });
+  } catch (error) {
+    console.error('Error importing bulk banned terms:', error);
+    return res.status(500).json({ error: error.message || 'Failed to import terms in bulk' });
+  }
+});
+
 app.get('/api/admin/users', requireSupabaseAuth, requireAdmin, async (req, res) => {
   try {
     const { data: { users }, error } = await supabase.auth.admin.listUsers();
     if (error) throw error;
-    
+
     // Mapear apenas dados relevantes e seguros
     const mappedUsers = users.map(u => ({
       id: u.id,

@@ -1,0 +1,47 @@
+Integration Tests,,,
+FilterSort:Created At,,,
+www.wikipreta.org https://www.wikipreta.org/,,,
+,,,
+Status,Integration Test,Category,Created At
+Pass,Collaborative Editing and Revision History: Save bold formatting in a verbete,UI,2026-05-23 14:33
+Pass,Administrative Management: Search the admin verbete list,UI,2026-05-23 14:33
+Pass,Content Discovery Roadmap Features: View citations and external sources,UI,2026-05-23 14:33
+Blocked,Administrative Management: Manage article images from the admin dashboard,UI,2026-05-23 14:33
+Pass,Administrative Management: Edit a verbete from the admin dashboard,UI,2026-05-23 14:33
+Failed,Content Discovery Roadmap Features: Switch to another language,UI,2026-05-23 14:33
+Pass,Interactive Encyclopedia: Follow a bold related term to another entry,UI,2026-05-23 14:33
+Pass,Administrative Management: Delete a verbete from the admin dashboard,UI,2026-05-23 14:33
+Pass,Content Discovery Roadmap Features: Search by semantic embeddings,UI,2026-05-23 14:33
+Failed,Content Discovery Roadmap Features: Access the public API for verbetes,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Retrieve a cached verbete from search,UI,2026-05-23 14:33
+Failed,Topic Slug Resolution: Open a topic from a normalized search result,UI,2026-05-23 14:33
+Pass,Topic Slug Resolution: Resolve a topic by normalized slug for a public article,UI,2026-05-23 14:33
+Failed,Topic Slug Resolution: Open a topic using a normalized slug,UI,2026-05-23 14:33
+Pass,Collaborative Editing and Revision History: Edit a verbete inline,UI,2026-05-23 14:33
+Pass,Interactive Encyclopedia: Review reading history and reopen a past entry,UI,2026-05-23 14:33
+Pass,Content Discovery Roadmap Features: Browse topics by categories or tags,UI,2026-05-23 14:33
+Pass,Theme Preferences: Switch between light and dark mode,UI,2026-05-23 14:33
+Pass,Authentication: Sign in to access editing features,UI,2026-05-23 14:33
+Pass,Collaborative Editing and Revision History: Open revision history from a specific topic page,UI,2026-05-23 14:33
+Failed,Collaborative Editing and Revision History: Edit a verbete from the admin dashboard,UI,2026-05-23 14:33
+Failed,Content Discovery Roadmap Features: Use offline mode,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Generate a new verbete from search,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Open a generated article from the landing page,UI,2026-05-23 14:33
+Pass,Topic Slug Resolution: Resolve a topic after removing accents,UI,2026-05-23 14:33
+Pass,Collaborative Editing and Revision History: Save an article image update,UI,2026-05-23 14:33
+Pass,Content Discovery Roadmap Features: Export a verbete as PDF,UI,2026-05-23 14:33
+Failed,AI Content Generation and Retrieval: Open Luiz Gama from search,UI,2026-05-23 14:33
+Pass,Interactive Encyclopedia: Share a verbete from its article page,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Use generated content on the topic page,UI,2026-05-23 14:33
+Pass,Interactive Encyclopedia: Search for a topic and open its entry,UI,2026-05-23 14:33
+Failed,AI Content Generation and Retrieval: Resolve the O Candomble topic slug,UI,2026-05-23 14:33
+Pass,Topic Slug Resolution: Resolve a topic without its leading article,UI,2026-05-23 14:33
+Pass,Administrative Management: Browse the admin verbete list,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Open Esperança Garcia from search,UI,2026-05-23 14:33
+Failed,Collaborative Editing and Revision History: Review revision history for a verbete,UI,2026-05-23 14:33
+Pass,Theme Preferences: Persist theme selection after revisiting the site,UI,2026-05-23 14:33
+Pass,Content Discovery Roadmap Features: Search full text within content,UI,2026-05-23 14:33
+Pass,AI Content Generation and Retrieval: Display article images on a verbete page,UI,2026-05-23 14:33
+Pass,Interactive Encyclopedia: Discover a random topic,UI,2026-05-23 14:33
+Pass,Authentication: Reject invalid sign in credentials,UI,2026-05-23 14:33
+Failed,Administrative Management: Manage users from the admin dashboard,UI,2026-05-23 14:33
