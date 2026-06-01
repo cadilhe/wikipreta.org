@@ -506,171 +506,199 @@ const AppContent: React.FC = () => {
 
               {isLoading && <LoadingSkeleton />}
 
-              {!isLoading && error && (
-                <div className="text-center py-8 px-6 border border-solid border-red-300 dark:border-red-700 rounded-lg bg-red-50 dark:bg-red-900/20">
-                  <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">{error}</h3>
-                  {error !== 'Este termo não existe na Wikipreta.' && !error.includes('não foi reconhecido') && (
-                    <button
-                      onClick={() => {
-                        setError(null);
-                        setCurrentTopic(currentTopic);
-                      }}
-                      className="mt-4 inline-flex items-center gap-2 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 font-semibold transition-transform transform hover:scale-105"
-                      aria-label="Tentar novamente"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"></path></svg>
-                      Tentar Novamente
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {!isLoading && suggestion && (
-                <div className="text-center py-8 px-6 border border-solid border-[#B8860B] dark:border-[#D4AF37] rounded-lg bg-amber-50 dark:bg-amber-900/10">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    Você quis dizer:{' '}
-                    <button
-                      onClick={() => handleWordClick(suggestion.title)}
-                      className="underline font-bold text-[#B8860B] dark:text-[#D4AF37] hover:opacity-80 transition-opacity"
-                    >
-                      {suggestion.title}
-                    </button>
-                    ?
-                  </h3>
-                </div>
-              )}
-
-              {!isLoading && content.length === 0 && !error && !suggestion && (
-                <div className="text-center py-8 px-6 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg">
-                  <h3 className="text-xl text-gray-800 dark:text-gray-200">Não foi encontrado conteúdo para "{currentTopic}".</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2 mb-6">Você gostaria de ser o primeiro a criar este verbete?</p>
-                  <button
-                    onClick={handleEdit}
-                    className="inline-flex items-center gap-2 py-2 px-5 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-semibold transition-transform transform hover:scale-105"
-                    aria-label={`Criar verbete para ${currentTopic}`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
-                    Criar Verbete
-                  </button>
-                </div>
-              )}
-
-              {content.length > 0 && (
-                isEditing ? (
-                  <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                    {editError && (
-                      <div className="mb-4 p-3 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm flex justify-between items-center">
-                        <span>{editError}</span>
-                        <button onClick={() => setEditError(null)} className="text-red-500 hover:text-red-700" aria-label="Fechar erro">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                        Título do Verbete
-                      </label>
-                      <input
-                        type="text"
-                        value={editedTitle}
-                        onChange={(e) => setEditedTitle(e.target.value)}
-                        placeholder="Título do verbete..."
-                        className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none font-serif text-lg font-bold"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Definição do Verbete
-                      </label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.querySelector('textarea');
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = textarea.value;
-                            const before = text.substring(0, start);
-                            const selection = text.substring(start, end);
-                            const after = text.substring(end);
-                            const newText = `${before}**${selection || 'termo'}**${after}`;
-                            setEditedContent(newText);
-                            // Focus back
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, end + 2);
-                            }, 10);
-                          }}
-                          className="p-1 px-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold text-lg flex items-center gap-1 transition-colors"
-                          title="Negrito (Transforma em link)"
-                        >
-                          B
-                        </button>
-                      </div>
-                    </div>
-
-                    <textarea
-                      value={editedContent}
-                      onChange={(e) => setEditedContent(e.target.value)}
-                      className="w-full h-64 p-4 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none resize-y mb-2 font-serif leading-relaxed"
-                      placeholder="Escreva a definição aqui..."
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 italic">
-                      Dica: Palavras entre **asteriscos duplos** (negrito) tornam-se links para outros verbetes automaticamente.
-                    </p>
-
-                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
-                      Imagem do Verbete
-                    </label>
-                    <div className="flex gap-2 mb-4">
-                      <input
-                        type="text"
-                        value={editedImageUrl}
-                        onChange={(e) => setEditedImageUrl(e.target.value)}
-                        placeholder="URL da imagem ou faça upload..."
-                        className="flex-1 p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none"
-                      />
-                      <label className={`cursor-pointer p-2 px-3 rounded-md border border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-100 ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        {isUploadingImage ? 'Enviando...' : 'Upload'}
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          disabled={isUploadingImage}
-                        />
-                      </label>
-                    </div>
-
-                    <div className="flex justify-end gap-4 mt-4">
-                      <button onClick={handleCancelEdit} className="py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700">
-                        Cancelar
+              {!isLoading && isEditing && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                  {editError && (
+                    <div className="mb-4 p-3 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm flex justify-between items-center">
+                      <span>{editError}</span>
+                      <button onClick={() => setEditError(null)} className="text-red-500 hover:text-red-700" aria-label="Fechar erro">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
-                      <button onClick={handleSaveEdit} className="py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-bold">
-                        Salvar Alterações
+                    </div>
+                  )}
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                      Título do Verbete
+                    </label>
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      placeholder="Título do verbete..."
+                      className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none font-serif text-lg font-bold"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Definição do Verbete
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.querySelector('textarea');
+                          if (!textarea) return;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const text = textarea.value;
+                          const before = text.substring(0, start);
+                          const selection = text.substring(start, end);
+                          const after = text.substring(end);
+                          const newText = `${before}**${selection || 'termo'}**${after}`;
+                          setEditedContent(newText);
+                          // Focus back
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.setSelectionRange(start + 2, end + 2);
+                          }, 10);
+                        }}
+                        className="p-1 px-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 font-bold text-lg flex items-center gap-1 transition-colors"
+                        title="Negrito (Transforma em link)"
+                      >
+                        B
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <ContentDisplay
-                      content={content}
-                      onWordClick={handleWordClick}
+
+                  <textarea
+                    value={editedContent}
+                    onChange={(e) => setEditedContent(e.target.value)}
+                    className="w-full h-64 p-4 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none resize-y mb-2 font-serif leading-relaxed"
+                    placeholder="Escreva a definição aqui..."
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 italic">
+                    Dica: Palavras entre **asteriscos duplos** (negrito) tornam-se links para outros verbetes automaticamente.
+                  </p>
+
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                    Imagem do Verbete
+                  </label>
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={editedImageUrl}
+                      onChange={(e) => setEditedImageUrl(e.target.value)}
+                      placeholder="URL da imagem ou faça upload..."
+                      className="flex-1 p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none"
                     />
-                    {!isLoading && isAuthenticated && (
-                      <div className="flex justify-end mt-4">
-                        <button onClick={handleEdit} className="flex items-center gap-2 py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-sm">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                          Editar
-                        </button>
+                    <label className={`cursor-pointer p-2 px-3 rounded-md border border-gray-400 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-100 ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      {isUploadingImage ? 'Enviando...' : 'Upload'}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isUploadingImage}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end gap-4 mt-4">
+                    <button onClick={handleCancelEdit} className="py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700">
+                      Cancelar
+                    </button>
+                    <button onClick={handleSaveEdit} className="py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-bold">
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!isLoading && !isEditing && (
+                <>
+                  {error && (
+                    <div className="text-center py-8 px-6 border border-solid border-red-300 dark:border-red-700 rounded-lg bg-red-50 dark:bg-red-900/20">
+                      <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">{error}</h3>
+                      <div className="flex justify-center gap-4 mt-4 flex-wrap">
+                        {error !== 'Este termo não existe na Wikipreta.' && !error.includes('não foi reconhecido') && (
+                          <button
+                            onClick={() => {
+                              setError(null);
+                              setCurrentTopic(currentTopic);
+                            }}
+                            className="inline-flex items-center gap-2 py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 font-semibold transition-transform transform hover:scale-105"
+                            aria-label="Tentar novamente"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"></path></svg>
+                            Tentar Novamente
+                          </button>
+                        )}
+                        {isAuthenticated && (
+                          <button
+                            onClick={handleEdit}
+                            className="inline-flex items-center gap-2 py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-semibold transition-transform transform hover:scale-105"
+                            aria-label={`Criar verbete para ${currentTopic}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                            Criar Verbete
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </>
-                )
+                    </div>
+                  )}
+
+                  {suggestion && (
+                    <div className="text-center py-8 px-6 border border-solid border-[#B8860B] dark:border-[#D4AF37] rounded-lg bg-amber-50 dark:bg-amber-900/10">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                        Você quis dizer:{' '}
+                        <button
+                          onClick={() => handleWordClick(suggestion.title)}
+                          className="underline font-bold text-[#B8860B] dark:text-[#D4AF37] hover:opacity-80 transition-opacity"
+                        >
+                          {suggestion.title}
+                        </button>
+                        ?
+                      </h3>
+                      {isAuthenticated && (
+                        <div className="mt-4">
+                          <button
+                            onClick={handleEdit}
+                            className="inline-flex items-center gap-2 py-2 px-4 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-semibold transition-transform transform hover:scale-105"
+                            aria-label={`Criar verbete para ${currentTopic}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                            Criar "{currentTopic}"
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {content.length === 0 && !error && !suggestion && (
+                    <div className="text-center py-8 px-6 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg">
+                      <h3 className="text-xl text-gray-800 dark:text-gray-200">Não foi encontrado conteúdo para "{currentTopic}".</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mt-2 mb-6">Você gostaria de ser o primeiro a criar este verbete?</p>
+                      <button
+                        onClick={handleEdit}
+                        className="inline-flex items-center gap-2 py-2 px-5 rounded-md bg-[#B8860B] text-white hover:bg-opacity-90 dark:bg-[#D4AF37] dark:text-black font-semibold transition-transform transform hover:scale-105"
+                        aria-label={`Criar verbete para ${currentTopic}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                        Criar Verbete
+                      </button>
+                    </div>
+                  )}
+
+                  {content.length > 0 && (
+                    <>
+                      <ContentDisplay
+                        content={content}
+                        onWordClick={handleWordClick}
+                      />
+                      {isAuthenticated && (
+                        <div className="flex justify-end mt-4">
+                          <button onClick={handleEdit} className="flex items-center gap-2 py-2 px-4 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                            Editar
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
           </>
@@ -679,7 +707,7 @@ const AppContent: React.FC = () => {
         {currentPage === 'about' && <AboutPage />}
         {currentPage === 'privacy' && <PrivacyPage />}
 
-        {(currentPage === 'home' && !isLoading && content) && (
+        {(currentPage === 'home' && !isLoading && !isEditing && content) && (
           <div
             key={currentTopic}
             id="image-container"

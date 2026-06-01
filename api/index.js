@@ -533,6 +533,13 @@ app.post('/api/gemini/content', async (req, res) => {
   // 2. Validação ativa via IA (para novos termos)
   console.log(`Checking if "${topic}" is a valid, real term...`);
   const validation = await validateTopicWithAI(topic);
+
+  // If AI claims it is a typo, but the corrected slug matches the query slug, it is actually valid
+  if (validation.isTypo && validation.correctedTerm && slugify(validation.correctedTerm) === slug) {
+    validation.isValid = true;
+    validation.isTypo = false;
+  }
+
   if (!validation.isValid) {
     if (validation.isTypo && validation.correctedTerm) {
       const correctedSlug = slugify(validation.correctedTerm);
