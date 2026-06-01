@@ -20,6 +20,9 @@ const AdminDashboard: React.FC = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
     const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState('updated_at');
+    const [order, setOrder] = useState('desc');
+    const [dateFilter, setDateFilter] = useState('all');
     const { isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
@@ -39,18 +42,25 @@ const AdminDashboard: React.FC = () => {
             return;
         }
         
-        // Debounce search to avoid too many requests
+        // Debounce search and filter updates to avoid overloading backend
         const timeoutId = setTimeout(() => {
-            fetchTopics(page, limit, search);
+            fetchTopics(page, limit, search, sortBy, order, dateFilter);
         }, 300);
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated, authLoading, page, limit, search, navigate]);
+    }, [isAuthenticated, authLoading, page, limit, search, sortBy, order, dateFilter, navigate]);
 
-    const fetchTopics = async (pageNum: number, currentLimit: number, searchTerm: string = '') => {
+    const fetchTopics = async (
+        pageNum: number, 
+        currentLimit: number, 
+        searchTerm: string = '', 
+        sortColumn: string = 'updated_at', 
+        sortOrder: string = 'desc', 
+        dateVal: string = 'all'
+    ) => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/topics?page=${pageNum}&limit=${currentLimit}&search=${encodeURIComponent(searchTerm)}`);
+            const response = await fetch(`/api/topics?page=${pageNum}&limit=${currentLimit}&search=${encodeURIComponent(searchTerm)}&sortBy=${sortColumn}&order=${sortOrder}&dateFilter=${dateVal}`);
             const data = await response.json();
             setTopics(data.topics);
             setTotalPages(data.pagination.pages);
@@ -168,9 +178,9 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4 bg-stone-50/50 dark:bg-stone-950/20">
-                    <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                        <div className="relative w-full md:w-64">
+                <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex flex-col xl:flex-row justify-between items-center gap-4 bg-stone-50/50 dark:bg-stone-950/20">
+                    <div className="flex flex-col lg:flex-row items-center gap-4 w-full lg:w-auto">
+                        <div className="relative w-full lg:w-64">
                             <input
                                 type="text"
                                 placeholder="Buscar verbete..."
@@ -183,7 +193,7 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
                             <div className="flex items-center gap-2">
                                 <label htmlFor="limit" className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
                                     Mostrar:
@@ -200,6 +210,49 @@ const AdminDashboard: React.FC = () => {
                                     <option value={100}>100</option>
                                 </select>
                             </div>
+
+                            <div className="flex items-center gap-2">
+                                <label htmlFor="sort" className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                    Ordenar por:
+                                </label>
+                                <select
+                                    id="sort"
+                                    value={`${sortBy}:${order}`}
+                                    onChange={(e) => {
+                                        const [newSortBy, newOrder] = e.target.value.split(':');
+                                        setSortBy(newSortBy);
+                                        setOrder(newOrder);
+                                        setPage(1);
+                                    }}
+                                    className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                                >
+                                    <option value="updated_at:desc">Atualizado (Mais recente)</option>
+                                    <option value="updated_at:asc">Atualizado (Mais antigo)</option>
+                                    <option value="title:asc">Título (A-Z)</option>
+                                    <option value="title:desc">Título (Z-A)</option>
+                                </select>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <label htmlFor="dateFilter" className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                    Período:
+                                </label>
+                                <select
+                                    id="dateFilter"
+                                    value={dateFilter}
+                                    onChange={(e) => {
+                                        setDateFilter(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                                >
+                                    <option value="all">Qualquer data</option>
+                                    <option value="7d">Últimos 7 dias</option>
+                                    <option value="30d">Últimos 30 dias</option>
+                                    <option value="90d">Últimos 90 dias</option>
+                                </select>
+                            </div>
+
                             {!loading && totalItems > 0 && (
                                 <span className="text-sm text-stone-500 whitespace-nowrap">
                                     <span className="font-bold text-stone-900 dark:text-stone-100">{rangeStart}</span> a <span className="font-bold text-stone-900 dark:text-stone-100">{rangeEnd}</span> de <span className="font-bold text-stone-900 dark:text-stone-100">{totalItems}</span>

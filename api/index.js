@@ -751,7 +751,7 @@ app.get('/api/random-images', (req, res) => {
 
 app.get('/api/topics', async (req, res) => {
   try {
-    let { page = 1, limit = 10, search = '' } = req.query;
+    let { page = 1, limit = 10, search = '', sortBy = 'updated_at', order = 'desc', dateFilter = 'all' } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
 
@@ -759,15 +759,39 @@ app.get('/api/topics', async (req, res) => {
     limit = Math.min(limit, 100);
     const offset = (page - 1) * limit;
 
+    // Validate parameters to prevent injection or invalid queries
+    if (!['title', 'updated_at'].includes(sortBy)) {
+      sortBy = 'updated_at';
+    }
+    if (!['asc', 'desc'].includes(order)) {
+      order = 'desc';
+    }
+
     let query = supabase
       .from('topics')
-      .select('*', { count: 'exact' })
-      .order('updated_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select('*', { count: 'exact' });
 
     if (search) {
       query = query.ilike('title', `%${search}%`);
     }
+
+    if (dateFilter && dateFilter !== 'all') {
+      const now = new Date();
+      if (dateFilter === '7d') {
+        now.setDate(now.getDate() - 7);
+        query = query.gte('updated_at', now.toISOString());
+      } else if (dateFilter === '30d') {
+        now.setDate(now.getDate() - 30);
+        query = query.gte('updated_at', now.toISOString());
+      } else if (dateFilter === '90d') {
+        now.setDate(now.getDate() - 90);
+        query = query.gte('updated_at', now.toISOString());
+      }
+    }
+
+    query = query
+      .order(sortBy, { ascending: order === 'asc' })
+      .range(offset, offset + limit - 1);
 
     const { data: topics, count, error } = await query;
 
