@@ -56,7 +56,13 @@ export const getTopicContent = async (topic: string): Promise<any | null> => {
 /**
  * Saves topic content to the server (Supabase).
  */
-export const saveTopicContent = async (topic: string, content: string, editorEmail?: string, imageUrl?: string): Promise<void> => {
+export const saveTopicContent = async (
+  topic: string, 
+  content: string, 
+  editorEmail?: string, 
+  imageUrl?: string,
+  newTitle?: string
+): Promise<any> => {
   try {
     const slug = toSlug(topic);
     
@@ -75,6 +81,7 @@ export const saveTopicContent = async (topic: string, content: string, editorEma
       method: 'PUT',
       headers,
       body: JSON.stringify({ 
+        title: newTitle || topic,
         content,
         editor_email: editorEmail || 'anonymous',
         imageUrl
@@ -87,7 +94,7 @@ export const saveTopicContent = async (topic: string, content: string, editorEma
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          title: topic,
+          title: newTitle || topic,
           content,
           source: 'user',
           imageUrl
@@ -96,8 +103,11 @@ export const saveTopicContent = async (topic: string, content: string, editorEma
     }
 
     if (!response.ok) {
-      throw new Error('Failed to save topic to server');
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to save topic to server');
     }
+
+    return await response.json();
   } catch (error) {
     console.error('Error saving topic to server:', error);
     throw error;

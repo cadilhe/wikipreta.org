@@ -69,6 +69,8 @@ const AppContent: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('edit') === 'true';
   });
+  const [editedTitle, setEditedTitle] = useState<string>('');
+  const [editError, setEditError] = useState<string | null>(null);
   const [editedContent, setEditedContent] = useState<string>('');
   const [editedImageUrl, setEditedImageUrl] = useState<string>('');
   const [topicImage, setTopicImage] = useState<string | null>(null);
@@ -305,7 +307,9 @@ const AppContent: React.FC = () => {
   }, [topicImage, currentTopic]);
 
   const handleEdit = () => {
+    setEditedTitle(currentTopic);
     setEditedContent(content);
+    setEditError(null);
     // Only set editedImageUrl if the current image is not a local random one
     if (topicImage && !topicImage.startsWith('/assets/images/random/')) {
       setEditedImageUrl(topicImage);
@@ -317,25 +321,47 @@ const AppContent: React.FC = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    setEditedTitle('');
     setEditedContent('');
     setEditedImageUrl('');
+    setEditError(null);
   };
 
   const handleSaveEdit = async () => {
-    if (editedContent.trim()) {
-      const finalContent = editedContent.trim();
-      const finalImageUrl = editedImageUrl.trim() || undefined;
+    if (!editedTitle.trim()) {
+      setEditError('O título do verbete não pode ficar vazio.');
+      return;
+    }
+    if (!editedContent.trim()) {
+      setEditError('A definição do verbete não pode ficar vazia.');
+      return;
+    }
 
-      await saveTopicContent(currentTopic, finalContent, user?.email, finalImageUrl);
+    const finalTitle = editedTitle.trim();
+    const finalContent = editedContent.trim();
+    const finalImageUrl = editedImageUrl.trim() || undefined;
 
-      setContent(finalContent);
-      if (finalImageUrl) {
-        setTopicImage(finalImageUrl);
+    try {
+      setEditError(null);
+      const savedTopic = await saveTopicContent(currentTopic, finalContent, user?.email, finalImageUrl, finalTitle);
+
+      setContent(savedTopic.content);
+      if (savedTopic.image_url) {
+        setTopicImage(savedTopic.image_url);
+      }
+
+      // If the title changed, we need to update the currentTopic state so the view updates
+      if (savedTopic.title && savedTopic.title !== currentTopic) {
+        setCurrentTopic(savedTopic.title);
       }
 
       setIsEditing(false);
+      setEditedTitle('');
       setEditedContent('');
       setEditedImageUrl('');
+    } catch (err: any) {
+      console.error('Failed to save edit:', err);
+      setEditError(err.message || 'Falha ao salvar as alterações');
     }
   };
 
@@ -531,6 +557,28 @@ const AppContent: React.FC = () => {
               {content.length > 0 && (
                 isEditing ? (
                   <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                    {editError && (
+                      <div className="mb-4 p-3 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md text-sm flex justify-between items-center">
+                        <span>{editError}</span>
+                        <button onClick={() => setEditError(null)} className="text-red-500 hover:text-red-700" aria-label="Fechar erro">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                        Título do Verbete
+                      </label>
+                      <input
+                        type="text"
+                        value={editedTitle}
+                        onChange={(e) => setEditedTitle(e.target.value)}
+                        placeholder="Título do verbete..."
+                        className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 border-gray-400 dark:border-gray-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#B8860B] dark:focus:ring-[#D4AF37] outline-none font-serif text-lg font-bold"
+                      />
+                    </div>
+
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Definição do Verbete

@@ -156,7 +156,7 @@ async function createTopic(topicData) {
 }
 
 async function updateTopic(slug, data) {
-  const { content, highlights, relatedTopics, imageUrl, editor_email } = data;
+  const { title, content, highlights, relatedTopics, imageUrl, editor_email } = data;
 
   // Get current topic for revision
   const topic = await getTopicBySlug(slug);
@@ -171,6 +171,10 @@ async function updateTopic(slug, data) {
   }
 
   const updateData = {};
+  if (title !== undefined) {
+    updateData.title = title;
+    updateData.slug = slugify(title);
+  }
   if (content !== undefined) updateData.content = content;
   if (highlights !== undefined) updateData.highlights = highlights;
   if (relatedTopics !== undefined) updateData.related_topics = relatedTopics;
@@ -443,8 +447,8 @@ const requireSupabaseAuth = async (req, res, next) => {
 const validateTopicPayload = (req, res, next) => {
   const { title, content } = req.body || {};
 
-  if (req.method === 'POST') {
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0) {
       return res.status(400).json({ error: 'Invalid or missing title' });
     }
     if (title.length > 100) {
@@ -867,8 +871,23 @@ app.put('/api/topics/:slug', requireSupabaseAuth, validateTopicPayload, async (r
     const topic = await getTopicBySlug(slug);
     if (!topic) return res.status(404).json({ error: 'Topic not found' });
 
-    const { content, highlights, relatedTopics, imageUrl, editor_email } = req.body;
-    const updated = await updateTopic(slug, { content, highlights, relatedTopics, imageUrl, editor_email });
+    const { title, content, highlights, relatedTopics, imageUrl, editor_email } = req.body;
+
+    if (title && title !== topic.title) {
+      if (await isBannedDb(title)) {
+        return res.status(403).json({ error: 'Este termo não existe na Wikipreta.' });
+      }
+
+      const newSlug = slugify(title);
+      if (newSlug !== slug) {
+        const existing = await getTopicBySlug(newSlug);
+        if (existing) {
+          return res.status(409).json({ error: 'Já existe outro verbete com este título.' });
+        }
+      }
+    }
+
+    const updated = await updateTopic(slug, { title, content, highlights, relatedTopics, imageUrl, editor_email });
 
     return res.json({
       ...updated,
