@@ -11,6 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminImages from './pages/AdminImages';
 import AdminUsers from './pages/AdminUsers';
 import AdminBannedTerms from './pages/AdminBannedTerms';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -753,6 +754,7 @@ const App: React.FC = () => {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/imagens" element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
           <Route path="/admin/banidos" element={<ProtectedRoute allowedRoles={['admin']}><AdminBannedTerms /></ProtectedRoute>} />
