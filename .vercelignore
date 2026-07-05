@@ -1,0 +1,7 @@
+# Ignore dev-only and local setup scripts in Vercel
+api/db-init.js
+api/db_check.js
+api/init-db.js
+api/create-admin.js
+api/scripts/
+tests/
