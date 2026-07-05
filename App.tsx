@@ -18,7 +18,7 @@ import { generateImageForTopic, generateTopicContent } from './services/geminiSe
 
 // --- Components ---
 
-import { getTopicContent, saveTopicContent, getHistory, addToHistory, clearHistory } from './services/databaseService';
+import { getTopicContent, saveTopicContent, getHistory, addToHistory, clearHistory, getRecentlyUpdatedTopics, getMostAccessedTopics } from './services/databaseService';
 import { supabase } from './services/supabase';
 import ContentDisplay from './components/ContentDisplay';
 import SearchBar from './components/SearchBar';
@@ -92,6 +92,11 @@ const AppContent: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  const [recentlyUpdated, setRecentlyUpdated] = useState<any[]>([]);
+  const [mostAccessed, setMostAccessed] = useState<any[]>([]);
+  const [isRecentLoading, setIsRecentLoading] = useState<boolean>(false);
+  const [isPopularLoading, setIsPopularLoading] = useState<boolean>(false);
+
   // Effect to handle theme changes
   useEffect(() => {
     try {
@@ -132,6 +137,35 @@ const AppContent: React.FC = () => {
     };
     loadRandomImages();
   }, []);
+
+  // Load recently updated and popular topics
+  const loadSidebarLists = useCallback(async () => {
+    setIsRecentLoading(true);
+    setIsPopularLoading(true);
+    try {
+      const recent = await getRecentlyUpdatedTopics(30);
+      setRecentlyUpdated(recent);
+    } catch (e) {
+      console.error('Failed to load recently updated topics:', e);
+    } finally {
+      setIsRecentLoading(false);
+    }
+
+    try {
+      const popular = await getMostAccessedTopics(5);
+      setMostAccessed(popular);
+    } catch (e) {
+      console.error('Failed to load popular topics:', e);
+    } finally {
+      setIsPopularLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentPage === 'home') {
+      loadSidebarLists();
+    }
+  }, [currentTopic, currentPage, loadSidebarLists]);
 
   // Effect to fetch content when topic changes
   useEffect(() => {
@@ -731,6 +765,33 @@ const AppContent: React.FC = () => {
             {!isImageLoading && !topicImage && (
               <div className="text-gray-500 dark:text-gray-400 text-center p-4">A representação visual do verbete aparecerá aqui.</div>
             )}
+          </div>
+        )}
+
+        {currentPage === 'home' && !isLoading && !isEditing && (
+          <div className="mt-16 space-y-12 border-t border-gray-200 dark:border-gray-800 pt-12 animate-in fade-in duration-500">
+            {/* Seção: Atualizados Recentemente (todos em chips) */}
+            {recentlyUpdated.length > 0 && (
+              <div>
+                <h3 className="text-lg font-serif font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <span className="w-1.5 h-5 bg-[#B8860B] dark:bg-[#D4AF37] rounded"></span>
+                  Atualizados Recentemente
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {recentlyUpdated.map((topic) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => handleWordClick(topic.title)}
+                      className="px-3.5 py-1.5 text-sm rounded-full border border-stone-300 dark:border-stone-700 bg-stone-100/80 hover:bg-stone-200/60 dark:bg-stone-900/40 dark:hover:bg-stone-800/70 text-stone-800 dark:text-stone-200 hover:border-[#B8860B] dark:hover:border-[#D4AF37] hover:text-[#B8860B] dark:hover:text-[#D4AF37] transition-all font-medium"
+                    >
+                      {topic.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
           </div>
         )}
       </main>

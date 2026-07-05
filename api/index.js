@@ -771,7 +771,7 @@ app.get('/api/topics', async (req, res) => {
     const offset = (page - 1) * limit;
 
     // Validate parameters to prevent injection or invalid queries
-    if (!['title', 'updated_at'].includes(sortBy)) {
+    if (!['title', 'updated_at', 'views'].includes(sortBy)) {
       sortBy = 'updated_at';
     }
     if (!['asc', 'desc'].includes(order)) {
@@ -828,6 +828,19 @@ app.get('/api/topics/:slug', async (req, res) => {
     const { slug } = req.params;
     const topic = await getTopicBySlug(slug);
     if (!topic) return res.status(404).json({ error: 'Topic not found' });
+
+    // Safely and asynchronously increment views in the background
+    // tolerating database states where column 'views' does not exist yet.
+    const currentViews = topic.views || 0;
+    supabase
+      .from('topics')
+      .update({ views: currentViews + 1 })
+      .eq('id', topic.id)
+      .then(({ error }) => {
+        if (error) {
+          console.warn('Could not increment views (table might need ALTER TABLE command):', error.message);
+        }
+      });
 
     const { data: revisions, error: revError } = await supabase
       .from('revisions')

@@ -10,7 +10,31 @@ interface Topic {
     slug: string;
     source: string;
     updated_at: string;
+    image_url?: string | null;
 }
+
+const getFallbackImage = (topicId: string) => {
+    const staticFallback = [
+        'hu-chen-60XLoOgwkfA-unsplash.jpg',
+        'ian-kiragu-GSh_PwsZsPQ-unsplash.jpg',
+        'ian-macharia-7k91OUDYAQ0-unsplash.jpg',
+        'james-wiseman-IebZAH6kaNw-unsplash.jpg',
+        'jeff-ackley-YwDo_HwORXs-unsplash.jpg',
+        'ninno-jackjr-CG6Gd__QIOY-unsplash.jpg',
+        'random1.png',
+        'random2.png',
+        'random3.png',
+        'random4.png',
+        'random5.png',
+        'seth-doyle-zf9_yiAekJs-unsplash.jpg'
+    ];
+    let hash = 0;
+    for (let i = 0; i < topicId.length; i++) {
+        hash = topicId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % staticFallback.length;
+    return `/assets/images/random/${staticFallback[index]}`;
+};
 
 const AdminDashboard: React.FC = () => {
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -291,6 +315,7 @@ const AdminDashboard: React.FC = () => {
                         <thead>
                             <tr className="bg-stone-50 dark:bg-stone-950/50 text-stone-500 text-xs uppercase tracking-widest border-bottom border-stone-200 dark:border-stone-800">
                                 <th className="p-6 font-semibold">ID</th>
+                                <th className="p-6 font-semibold">Imagem</th>
                                 <th className="p-6 font-semibold">Título</th>
                                 <th className="p-6 font-semibold">Fonte</th>
                                 <th className="p-6 font-semibold">Atualizado em</th>
@@ -300,7 +325,7 @@ const AdminDashboard: React.FC = () => {
                         <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                             {authLoading || loading ? (
                                 <tr>
-                                    <td colSpan={5} className="p-12 text-center">
+                                    <td colSpan={6} className="p-12 text-center">
                                         <div className="flex flex-col items-center gap-4">
                                             <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                                             <p className="text-stone-500 italic">Carregando verbetes...</p>
@@ -309,12 +334,19 @@ const AdminDashboard: React.FC = () => {
                                 </tr>
                             ) : topics.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="p-12 text-center text-stone-500">Nenhum verbete encontrado.</td>
+                                    <td colSpan={6} className="p-12 text-center text-stone-500">Nenhum verbete encontrado.</td>
                                 </tr>
                             ) : (
                                 topics.map((topic) => (
                                     <tr key={topic.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors group">
                                         <td className="p-6 text-stone-400 font-mono text-[10px]">#{topic.id.substring(0, 8)}</td>
+                                        <td className="p-6">
+                                            <img 
+                                                src={topic.image_url || getFallbackImage(topic.id)} 
+                                                alt={topic.title} 
+                                                className="w-12 h-12 object-cover rounded-lg border border-stone-200 dark:border-stone-700" 
+                                            />
+                                        </td>
                                         <td className="p-6">
                                             <span className="font-serif text-lg text-stone-900 dark:text-white font-bold group-hover:text-amber-600 transition-colors">
                                                 {topic.title}

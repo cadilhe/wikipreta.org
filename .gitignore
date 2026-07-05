@@ -36,3 +36,7 @@ server/uploads/*
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary dev notes and tokens
+docs/_temp/
+

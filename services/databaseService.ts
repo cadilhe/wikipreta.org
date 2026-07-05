@@ -379,3 +379,33 @@ export const deleteBannedTermsBulk = async (ids: string[]): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Fetches recently updated topics (updated in the last 30 days).
+ */
+export const getRecentlyUpdatedTopics = async (limit: number = 30): Promise<any[]> => {
+  try {
+    const response = await fetch(`${API_URL}/topics?dateFilter=30d&sortBy=updated_at&order=desc&limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch recently updated topics');
+    const data = await response.json();
+    return data.topics || [];
+  } catch (error) {
+    console.error('Error getting recently updated topics:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetches most accessed topics sorted by view count.
+ */
+export const getMostAccessedTopics = async (limit: number = 5): Promise<any[]> => {
+  try {
+    const response = await fetch(`${API_URL}/topics?sortBy=views&order=desc&limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch most accessed topics');
+    const data = await response.json();
+    return data.topics || [];
+  } catch (error) {
+    console.error('Error getting most accessed topics:', error);
+    return [];
+  }
+};
