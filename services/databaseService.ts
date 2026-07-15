@@ -409,3 +409,76 @@ export const getMostAccessedTopics = async (limit: number = 5): Promise<any[]> =
     return [];
   }
 };
+
+export interface NewsArticle {
+  id: string;
+  title: string;
+  source_name: string;
+  link: string;
+  pub_date: string;
+  creator?: string;
+  description?: string;
+  ingested_to_kb: boolean;
+  created_at: string;
+}
+
+export interface NewsResponse {
+  articles: NewsArticle[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+/**
+ * Fetches news from the backend database (caches/lazy-syncs feeds).
+ */
+export const getNews = async (page: number = 1, limit: number = 10, source?: string): Promise<NewsResponse> => {
+  try {
+    let url = `${API_URL}/news?page=${page}&limit=${limit}`;
+    if (source && source !== 'All' && source !== 'Todos') {
+      url += `&source=${encodeURIComponent(source)}`;
+    }
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch news feed');
+    return await response.json();
+  } catch (error) {
+    console.error('Error in getNews:', error);
+    return {
+      articles: [],
+      pagination: { page, limit, total: 0, pages: 0 }
+    };
+  }
+};
+
+/**
+ * Forces a manual sync of the RSS feeds (requires authentication, admin/editor).
+ */
+export const syncNews = async (): Promise<{ count: number; message: string }> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/news/sync`, {
+      method: 'POST'
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error in syncNews:', error);
+    throw error;
+  }
+};
+
+/**
+ * Forces ingestion of uningested news articles into the RAG knowledge_base (requires authentication, admin/editor).
+ */
+export const ingestNewsToKB = async (): Promise<{ message: string }> => {
+  try {
+    const response = await authenticatedFetch(`${API_URL}/news/ingest`, {
+      method: 'POST'
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error in ingestNewsToKB:', error);
+    throw error;
+  }
+};

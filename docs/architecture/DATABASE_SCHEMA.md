@@ -124,6 +124,29 @@ $$;
 
 ---
 
+## Tabela: `news_articles`
+
+Cache de notícias importadas dos feeds RSS da cultura negra.
+
+```sql
+CREATE TABLE news_articles (
+  id              BIGSERIAL PRIMARY KEY,
+  title           TEXT NOT NULL,
+  source_name     TEXT NOT NULL,  -- Ex: "Mundo Negro", "Alma Preta"
+  link            TEXT UNIQUE NOT NULL,
+  pub_date        TIMESTAMPTZ NOT NULL,
+  creator         TEXT,
+  description     TEXT,
+  ingested_to_kb  BOOLEAN DEFAULT false,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_news_pub_date ON news_articles(pub_date DESC);
+CREATE INDEX idx_news_ingested ON news_articles(ingested_to_kb);
+```
+
+---
+
 ## Storage: `verbetes-images`
 
 ```sql
@@ -171,6 +194,11 @@ CREATE POLICY "authenticated insert revisions" ON revisions FOR INSERT TO authen
 -- knowledge_base: leitura pública (backend usa service_role para escrita)
 ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "public read kb" ON knowledge_base FOR SELECT TO public USING (true);
+
+-- news_articles: leitura pública, escrita apenas por autenticados
+ALTER TABLE news_articles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public read news_articles" ON news_articles FOR SELECT TO public USING (true);
+CREATE POLICY "authenticated write news_articles" ON news_articles FOR ALL TO authenticated USING (true) WITH CHECK (true);
 ```
 
 ---
@@ -182,4 +210,5 @@ CREATE POLICY "public read kb" ON knowledge_base FOR SELECT TO public USING (tru
 | `topics` | Pública | Autenticado |
 | `revisions` | Pública | Autenticado |
 | `knowledge_base` | Pública | Service Role (backend) |
+| `news_articles` | Pública | Autenticado / Service Role |
 | `storage/verbetes-images` | Pública | Autenticado |

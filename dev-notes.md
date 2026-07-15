@@ -24,6 +24,20 @@ O aplicativo tem uma abordagem educativa e cultural importante, focando na valor
 
 ---
 
+## PROGRESSO (15 de julho de 2026)
+
+### Concluído Hoje
+- ✅ Criado script de migração do banco de dados `prisma/create_news_table.sql` para tabela `news_articles`.
+- ✅ Implementado parser RSS/XML customizado leve no backend (`api/index.js`) capaz de ler múltiplos canais RSS de portais de cultura negra.
+- ✅ Implementado gerador de embeddings híbrido de 384 dimensões em `api/index.js` (Ollama local / Gemini cloud API fallback).
+- ✅ Criados endpoints `/api/news` (feed paginado com lazy-sync de 6 horas), `/api/news/sync` (sincronização forçada) e `/api/news/ingest` (indexação no RAG).
+- ✅ Implementados métodos no frontend `services/databaseService.ts` para integrar o cliente React com a API de notícias de forma autenticada.
+- ✅ Criada a página responsiva `pages/NewsFeedPage.tsx` com filtros de canais RSS, paginação, suporte a temas e painel de curador RAG.
+- ✅ Modificado `App.tsx` para registrar a nova rota `/noticias` e o respectivo link "Notícias Pretas" no rodapé.
+- ✅ Criado script de testes automatizados `tests/test-news-sync.js` e validado sucesso no terminal.
+
+---
+
 ## PROGRESSO (7 de dezembro de 2025)
 
 ### Concluído Hoje

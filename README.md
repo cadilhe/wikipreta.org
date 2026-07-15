@@ -68,11 +68,17 @@ Exemplo: "Menina da Bahia" e "Menina Bahia" levam ao mesmo registro `menina-bahi
 ### Edição e Curadoria
 Usuários logados podem editar textos e URLs de imagem através do editor integrado, que possui uma barra de ferramentas para formatação rápida. **Todo texto em negrito (`**termo**`) torna-se automaticamente um link para outro verbete.**
 
+### Feed de Notícias Pretas & RAG
+O sistema possui uma aba dedicada a notícias que consome feeds RSS de 5 portais da cultura negra (*Guia Negro*, *Mundo Negro*, *Alma Preta*, *Geledés* e *Notícia Preta*):
+1. **Lazy-Sync com Cooldown (6h)**: Sincroniza notícias de forma assíncrona ao acessar a página se o cache do banco tiver mais de 6 horas, ou sob demanda por um botão no painel de administração.
+2. **Integração RAG (Knowledge Base)**: Editores podem indexar as notícias no banco vetorial da Wikipreta. O sistema gera automaticamente embeddings de **384 dimensões** utilizando o Ollama local (`nomic-embed-text`) ou a API do Gemini (`text-embedding-004` com limite de 384d) em produção. As notícias passam a servir de contexto para a geração de verbetes pelo motor principal (**DeepSeek**).
+
 ## 📂 Estrutura de Pastas
-- `/server`: API Express e lógica de integração com IAs.
+- `/api`: API Express e lógica de integração com IAs, moderação e banco de dados.
 - `/services`: Clientes de banco de dados e comunicação com a API.
 - `/public/assets/images/random`: Repositório de imagens culturais para exibição randômica.
 - `/components`: Componentes React (SearchBar, ContentDisplay, etc).
+- `/pages`: Telas e páginas completas da aplicação (Dashboard, Feed de Notícias, etc).
 
 ---
 *Wikipreta.org - Conhecimento que resiste.*

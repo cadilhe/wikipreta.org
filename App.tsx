@@ -12,6 +12,7 @@ import AdminImages from './pages/AdminImages';
 import AdminUsers from './pages/AdminUsers';
 import AdminBannedTerms from './pages/AdminBannedTerms';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import NewsFeedPage from './pages/NewsFeedPage';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -799,18 +800,22 @@ const AppContent: React.FC = () => {
       <footer className="sticky-footer">
         <nav className="mb-4" aria-label="Footer navigation">
           <ul className="flex justify-center items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            {footerMenuItems.map((item, index) => (
+            {footerMenuItems.map((item) => (
               <React.Fragment key={item.label}>
                 <li>
                   <button onClick={() => handleNavigate(item.page as Page)} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
                     {item.label}
                   </button>
                 </li>
-                {index < footerMenuItems.length - 1 && (
-                  <li aria-hidden="true">·</li>
-                )}
+                <li aria-hidden="true">·</li>
               </React.Fragment>
             ))}
+            <li>
+              <button onClick={() => navigate('/noticias')} className="px-2 py-1 transition-colors duration-200 hover:text-[#B8860B] dark:hover:text-[#D4AF37]">
+                Notícias Pretas
+              </button>
+            </li>
+            <li aria-hidden="true">·</li>
             <li>
               {isAuthenticated ? (
                 <>
@@ -848,6 +853,7 @@ const App: React.FC = () => {
           <Route path="/admin/imagens" element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
           <Route path="/admin/banidos" element={<ProtectedRoute allowedRoles={['admin']}><AdminBannedTerms /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+          <Route path="/noticias" element={<NewsFeedPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </AuthProvider>

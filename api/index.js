@@ -327,32 +327,58 @@ async function validateTopicWithAI(topic) {
 
 
 
-async function getContextFromKnowledge(topic) {
-  const OLLAMA_LOCAL = 'http://127.0.0.1:11434';
-
+async function getEmbedding384(text) {
+  const OLLAMA_LOCAL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
+  
+  // 1. Tenta Ollama local nomic-embed-text primeiro
   try {
-    let embedding;
-    // Tenta primeiro o endpoint universal (mais estável)
-    const res1 = await fetch(`${OLLAMA_LOCAL}/api/embeddings`, {
+    const res = await fetch(`${OLLAMA_LOCAL}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'nomic-embed-text', prompt: topic })
+      body: JSON.stringify({ model: 'nomic-embed-text', prompt: text })
     });
-
-    if (res1.ok) {
-      const data = await res1.json();
-      embedding = data.embedding;
+    if (res.ok) {
+      const data = await res.json();
+      if (data.embedding) return data.embedding;
     } else {
-      // Fallback para o endpoint novo
       const res2 = await fetch(`${OLLAMA_LOCAL}/api/embed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'nomic-embed-text', input: topic })
+        body: JSON.stringify({ model: 'nomic-embed-text', input: text })
       });
-      if (!res2.ok) throw new Error("Falha ao gerar embedding");
-      const data = await res2.json();
-      embedding = data.embeddings[0];
+      if (res2.ok) {
+        const data = await res2.json();
+        if (data.embeddings && data.embeddings[0]) return data.embeddings[0];
+      }
     }
+  } catch (e) {
+    console.log('Ollama embedding falhou, tentando fallback para Gemini...', e.message);
+  }
+
+  // 2. Tenta fallback para Gemini API text-embedding-004 com 384 dimensões
+  if (ai) {
+    try {
+      console.log('Gerando embedding de 384 dimensões na API do Gemini...');
+      const model = ai.getGenerativeModel({ model: 'text-embedding-004' });
+      const result = await model.embedContent({
+        content: text,
+        outputDimensionality: 384
+      });
+      if (result.embedding && result.embedding.values) {
+        return result.embedding.values;
+      }
+    } catch (err) {
+      console.error('Falha no fallback de embedding do Gemini:', err.message);
+    }
+  }
+
+  throw new Error('Nenhum provedor de embedding disponível');
+}
+
+async function getContextFromKnowledge(topic) {
+  try {
+    const embedding = await getEmbedding384(topic);
+    if (!embedding) return "";
 
     // 2. Busca no Supabase via RPC 'match_knowledge'
     const { data: documents, error } = await supabase.rpc('match_knowledge', {
@@ -1264,6 +1290,269 @@ app.delete('/api/admin/images/:name', requireSupabaseAuth, async (req, res) => {
   } catch (error) {
     console.error('Error deleting image:', error);
     return res.status(500).json({ error: error.message || 'Failed to delete image' });
+  }
+});
+
+// ============= News & RSS Feed Endpoints =============
+
+const NEWS_SOURCES = [
+  { name: 'Guia Negro', url: 'https://guianegro.com.br/feed/' },
+  { name: 'Mundo Negro', url: 'https://mundonegro.inf.br/feed/' },
+  { name: 'Alma Preta', url: 'https://almapreta.com.br/feed/' },
+  { name: 'Geledés', url: 'https://www.geledes.org.br/feed/' },
+  { name: 'Notícia Preta', url: 'https://noticiapreta.com.br/feed/' }
+];
+
+function parseRSS(xmlText, sourceName) {
+  const items = [];
+  const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g;
+  let match;
+  
+  const extractTag = (xml, tagName) => {
+    const regex = new RegExp(`<(${tagName}|[a-zA-Z0-9_-]+:${tagName})[^>]*>([\\s\\S]*?)<\\/\\1>`, 'i');
+    const m = xml.match(regex);
+    if (!m) return '';
+    let content = m[2].trim();
+    if (content.startsWith('<![CDATA[') && content.endsWith(']]>')) {
+      content = content.substring(9, content.length - 3).trim();
+    }
+    return content;
+  };
+
+  const stripHtml = (html) => {
+    return html
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#8217;/g, "'")
+      .replace(/&#8220;/g, '"')
+      .replace(/&#8221;/g, '"')
+      .replace(/&#8211;/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  while ((match = itemRegex.exec(xmlText)) !== null) {
+    const itemXml = match[1];
+    const title = stripHtml(extractTag(itemXml, 'title'));
+    const link = extractTag(itemXml, 'link');
+    const pubDateStr = extractTag(itemXml, 'pubDate');
+    const creator = stripHtml(extractTag(itemXml, 'creator') || extractTag(itemXml, 'author') || '');
+    const description = stripHtml(extractTag(itemXml, 'description'));
+    
+    let pubDate = new Date();
+    if (pubDateStr) {
+      const parsedDate = Date.parse(pubDateStr);
+      if (!isNaN(parsedDate)) {
+        pubDate = new Date(parsedDate);
+      }
+    }
+
+    if (title && link) {
+      items.push({
+        title,
+        source_name: sourceName,
+        link,
+        pub_date: pubDate.toISOString(),
+        creator: creator || null,
+        description: description || null
+      });
+    }
+  }
+  return items;
+}
+
+async function syncFeeds() {
+  const allArticles = [];
+  
+  for (const source of NEWS_SOURCES) {
+    try {
+      console.log(`Fetching feed from ${source.name}: ${source.url}`);
+      const response = await fetch(source.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) {
+        throw new Error(`Status ${response.status}`);
+      }
+      const xmlText = await response.text();
+      const parsed = parseRSS(xmlText, source.name);
+      console.log(`Parsed ${parsed.length} articles from ${source.name}`);
+      allArticles.push(...parsed);
+    } catch (err) {
+      console.error(`Failed to sync feed from ${source.name}:`, err.message);
+    }
+  }
+
+  if (allArticles.length === 0) return { count: 0, message: 'Nenhum artigo encontrado ou falha nas requisições.' };
+
+  const { data, error } = await supabase
+    .from('news_articles')
+    .upsert(allArticles, { onConflict: 'link' })
+    .select();
+
+  if (error) {
+    console.error('Error inserting synced news articles to Supabase:', error.message);
+    throw error;
+  }
+
+  return {
+    count: data ? data.length : 0,
+    message: `Sincronização concluída. ${data ? data.length : 0} artigos processados/atualizados.`
+  };
+}
+
+app.get('/api/news', async (req, res) => {
+  try {
+    let { page = 1, limit = 10, source } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+    limit = Math.min(limit, 50);
+    const offset = (page - 1) * limit;
+
+    let shouldSync = false;
+    try {
+      const { data: latestNews, error: latestError } = await supabase
+        .from('news_articles')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (latestError) throw latestError;
+
+      if (!latestNews || latestNews.length === 0) {
+        shouldSync = true;
+      } else {
+        const lastSyncTime = new Date(latestNews[0].created_at).getTime();
+        const diffMs = Date.now() - lastSyncTime;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        if (diffHours >= 6) {
+          shouldSync = true;
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking latest news sync time:', e.message);
+      shouldSync = true;
+    }
+
+    if (shouldSync) {
+      console.log('Lazy syncing feeds in background...');
+      syncFeeds().catch(err => console.error('Background lazy sync failed:', err.message));
+    }
+
+    let query = supabase
+      .from('news_articles')
+      .select('*', { count: 'exact' });
+
+    if (source && source !== 'All' && source !== 'Todos') {
+      query = query.eq('source_name', source);
+    }
+
+    query = query
+      .order('pub_date', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const { data: articles, count, error } = await query;
+
+    if (error) throw error;
+
+    return res.json({
+      articles,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        pages: Math.ceil(count / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    return res.status(500).json({ error: 'Failed to fetch news feed' });
+  }
+});
+
+app.post('/api/news/sync', requireSupabaseAuth, requireAdminOrEditor, async (req, res) => {
+  try {
+    const result = await syncFeeds();
+    return res.json(result);
+  } catch (error) {
+    console.error('Manual feed sync error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to sync feeds' });
+  }
+});
+
+app.post('/api/news/ingest', requireSupabaseAuth, requireAdminOrEditor, async (req, res) => {
+  try {
+    const { data: articles, error: fetchError } = await supabase
+      .from('news_articles')
+      .select('*')
+      .eq('ingested_to_kb', false)
+      .order('pub_date', { ascending: false })
+      .limit(10);
+
+    if (fetchError) throw fetchError;
+
+    if (!articles || articles.length === 0) {
+      return res.json({ message: 'Nenhuma nova notícia para indexar no RAG.' });
+    }
+
+    let successCount = 0;
+    let skippedCount = 0;
+
+    for (const article of articles) {
+      const textToEmbed = `${article.title}. ${article.description || ''}`.trim();
+
+      if (await isBannedDb(article.title) || (article.description && await isBannedDb(article.description))) {
+        console.log(`🚫 News article skipped by banned terms moderation: "${article.title}"`);
+        await supabase
+          .from('news_articles')
+          .update({ ingested_to_kb: true })
+          .eq('id', article.id);
+        skippedCount++;
+        continue;
+      }
+
+      try {
+        const embedding = await getEmbedding384(textToEmbed);
+
+        const { error: kbError } = await supabase
+          .from('knowledge_base')
+          .insert([{
+            content: textToEmbed,
+            embedding,
+            metadata: {
+              source: 'news',
+              title: article.title,
+              url: article.link,
+              source_name: article.source_name,
+              pub_date: article.pub_date
+            }
+          }]);
+
+        if (kbError) throw kbError;
+
+        await supabase
+          .from('news_articles')
+          .update({ ingested_to_kb: true })
+          .eq('id', article.id);
+
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to ingest article "${article.title}" into RAG:`, err.message);
+      }
+    }
+
+    return res.json({
+      message: `Indexação concluída. ${successCount} notícias indexadas no RAG, ${skippedCount} ignoradas por moderação.`
+    });
+  } catch (error) {
+    console.error('RAG ingestion error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to ingest news to RAG' });
   }
 });
 
