@@ -9,17 +9,17 @@ const SOURCES = ['Todos', 'Guia Negro', 'Mundo Negro', 'Alma Preta', 'Geledés',
 const NewsFeedPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  
+
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [ingesting, setIngesting] = useState<boolean>(false);
-  
+
   const [source, setSource] = useState<string>('Todos');
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
-  
+
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -144,7 +144,7 @@ const NewsFeedPage: React.FC = () => {
         <header className="text-center mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900 dark:text-white mb-2 flex items-center justify-center gap-2">
             <span className="w-1.5 h-6 bg-[#B8860B] dark:bg-[#D4AF37] rounded"></span>
-            Feed de Notícias
+            Notícias Pretas
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 italic">
             Atualizações recentes dos principais portais da cultura negra no Brasil.
@@ -199,11 +199,10 @@ const NewsFeedPage: React.FC = () => {
 
         {/* Feedback Messages */}
         {feedback && (
-          <div className={`mb-6 p-3 border rounded-md text-sm flex justify-between items-center animate-in fade-in duration-200 ${
-            feedback.type === 'success'
+          <div className={`mb-6 p-3 border rounded-md text-sm flex justify-between items-center animate-in fade-in duration-200 ${feedback.type === 'success'
               ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400'
               : 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400'
-          }`}>
+            }`}>
             <span>{feedback.message}</span>
             <button onClick={() => setFeedback(null)} className="opacity-60 hover:opacity-100 transition-opacity">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -219,11 +218,10 @@ const NewsFeedPage: React.FC = () => {
               <button
                 key={src}
                 onClick={() => handleSourceChange(src)}
-                className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 ${
-                  isSelected
+                className={`px-3 py-1 text-xs rounded-full border transition-all duration-200 ${isSelected
                     ? 'bg-[#B8860B] dark:bg-[#D4AF37] border-[#B8860B] dark:border-[#D4AF37] text-white dark:text-black font-semibold'
                     : 'border-stone-300 dark:border-stone-700 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 text-stone-700 dark:text-stone-300'
-                }`}
+                  }`}
               >
                 {src}
               </button>
