@@ -40,3 +40,6 @@ server/uploads/*
 # Temporary dev notes and tokens
 docs/_temp/
 
+# RAG source files (local ingestion only, not versioned)
+api/data/
+
