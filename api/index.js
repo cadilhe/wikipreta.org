@@ -1298,7 +1298,7 @@ const getMarkdownFiles = (dir, baseDir = dir) => {
 // GET /api/admin/docs - Lista os arquivos markdown disponíveis das pastas docs e help-docs
 app.get('/api/admin/docs', requireSupabaseAuth, requireAdmin, (req, res) => {
   try {
-    const rootDir = path.resolve(__dirname, '..');
+    const rootDir = process.cwd();
     const docsDir = path.resolve(rootDir, 'docs');
     const helpDocsDir = path.resolve(rootDir, 'help-docs');
     
@@ -1324,7 +1324,7 @@ app.get('/api/admin/docs', requireSupabaseAuth, requireAdmin, (req, res) => {
 // GET /api/admin/docs/content - Retorna o conteúdo de um markdown específico (docs ou help-docs)
 app.get('/api/admin/docs/content', requireSupabaseAuth, requireAdmin, (req, res) => {
   try {
-    const rootDir = path.resolve(__dirname, '..');
+    const rootDir = process.cwd();
     const docsDir = path.resolve(rootDir, 'docs');
     const helpDocsDir = path.resolve(rootDir, 'help-docs');
     let requestedPath = req.query.path;
@@ -1342,8 +1342,12 @@ app.get('/api/admin/docs/content', requireSupabaseAuth, requireAdmin, (req, res)
     const targetPath = path.resolve(rootDir, requestedPath);
     
     // 🔒 SEGURANÇA [VULN-BAC / Directory Traversal]: Nega acesso caso o caminho esteja fora de docs ou help-docs
-    const isInDocs = targetPath.startsWith(docsDir);
-    const isInHelpDocs = targetPath.startsWith(helpDocsDir);
+    // Usamos path.relative para ser imune a discrepâncias de caminhos e symlinks no ambiente online (ex: Vercel)
+    const relativeToDocs = path.relative(docsDir, targetPath);
+    const relativeToHelp = path.relative(helpDocsDir, targetPath);
+    
+    const isInDocs = !relativeToDocs.startsWith('..') && !path.isAbsolute(relativeToDocs);
+    const isInHelpDocs = !relativeToHelp.startsWith('..') && !path.isAbsolute(relativeToHelp);
     if (!isInDocs && !isInHelpDocs) {
       return res.status(403).json({ error: 'Access denied: Directory traversal attempt detected' });
     }
