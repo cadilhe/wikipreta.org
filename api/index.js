@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
+import matter from 'gray-matter';
 import { fileURLToPath } from 'url';
 import { supabase } from './supabase.js';
 import { slugify, generateImageFilename, isBanned } from './utils.js';
@@ -1224,6 +1225,143 @@ app.put('/api/admin/users/:id/ban', requireSupabaseAuth, requireAdmin, async (re
   } catch (error) {
     console.error('Error toggling user ban status:', error);
     return res.status(500).json({ error: error.message || 'Failed to toggle ban status' });
+  }
+});
+
+// ============= Admin Documentation Endpoints =============
+
+// Auxiliar para escanear a pasta docs recursivamente
+const getMarkdownFiles = (dir, baseDir = dir) => {
+  let results = [];
+  if (!fs.existsSync(dir)) return results;
+  
+  const list = fs.readdirSync(dir);
+  list.forEach(file => {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    
+    if (stat && stat.isDirectory()) {
+      // Ignorar _temp e pastas ocultas
+      if (file !== '_temp' && !file.startsWith('.')) {
+        results = results.concat(getMarkdownFiles(filePath, baseDir));
+      }
+    } else if (file.endsWith('.md')) {
+      const relativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
+      let title = file;
+      
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const parsed = matter(fileContent);
+        if (parsed.data && parsed.data.title) {
+          title = parsed.data.title;
+        } else {
+          // Extrair o primeiro header H1
+          const h1Match = fileContent.match(/^#\s+(.+)$/m);
+          if (h1Match) {
+            title = h1Match[1].trim();
+          } else {
+            // Nome do arquivo sem extensão, com capitalize
+            title = file.replace(/\.md$/i, '').replace(/[-_]/g, ' ');
+          }
+        }
+      } catch (err) {
+        console.warn(`Failed to parse title for file: ${relativePath}`, err);
+      }
+      
+      // Higienização amigável da categoria
+      let category = 'Geral';
+      const dirName = path.dirname(relativePath).replace(/\\/g, '/');
+      if (dirName !== '.') {
+        if (dirName.startsWith('docs/')) {
+          category = dirName.substring(5);
+        } else if (dirName === 'docs') {
+          category = 'Geral';
+        } else if (dirName.startsWith('help-docs/')) {
+          category = 'Ajuda / ' + dirName.substring(10);
+        } else if (dirName === 'help-docs') {
+          category = 'Ajuda';
+        } else {
+          category = dirName;
+        }
+      }
+      
+      results.push({
+        path: relativePath,
+        title,
+        category
+      });
+    }
+  });
+  return results;
+};
+
+// GET /api/admin/docs - Lista os arquivos markdown disponíveis das pastas docs e help-docs
+app.get('/api/admin/docs', requireSupabaseAuth, requireAdmin, (req, res) => {
+  try {
+    const rootDir = path.resolve(__dirname, '..');
+    const docsDir = path.resolve(rootDir, 'docs');
+    const helpDocsDir = path.resolve(rootDir, 'help-docs');
+    
+    const docs = getMarkdownFiles(docsDir, rootDir);
+    const helpDocs = getMarkdownFiles(helpDocsDir, rootDir);
+    
+    const allDocs = [...docs, ...helpDocs];
+    
+    // Ordenar arquivos ("docs/INDEX.md" primeiro, depois por caminho alfabético)
+    const sortedDocs = allDocs.sort((a, b) => {
+      if (a.path === 'docs/INDEX.md') return -1;
+      if (b.path === 'docs/INDEX.md') return 1;
+      return a.path.localeCompare(b.path);
+    });
+
+    res.json(sortedDocs);
+  } catch (error) {
+    console.error('Error listing admin docs:', error);
+    res.status(500).json({ error: error.message || 'Failed to list documents' });
+  }
+});
+
+// GET /api/admin/docs/content - Retorna o conteúdo de um markdown específico (docs ou help-docs)
+app.get('/api/admin/docs/content', requireSupabaseAuth, requireAdmin, (req, res) => {
+  try {
+    const rootDir = path.resolve(__dirname, '..');
+    const docsDir = path.resolve(rootDir, 'docs');
+    const helpDocsDir = path.resolve(rootDir, 'help-docs');
+    let requestedPath = req.query.path;
+    
+    if (!requestedPath) {
+      return res.status(400).json({ error: 'Caminho do arquivo não fornecido' });
+    }
+    
+    // Retrocompatibilidade se o frontend pedir INDEX.md cru (direciona para docs/INDEX.md)
+    if (requestedPath === 'INDEX.md') {
+      requestedPath = 'docs/INDEX.md';
+    }
+    
+    // Resolve o caminho de forma segura
+    const targetPath = path.resolve(rootDir, requestedPath);
+    
+    // 🔒 SEGURANÇA [VULN-BAC / Directory Traversal]: Nega acesso caso o caminho esteja fora de docs ou help-docs
+    const isInDocs = targetPath.startsWith(docsDir);
+    const isInHelpDocs = targetPath.startsWith(helpDocsDir);
+    if (!isInDocs && !isInHelpDocs) {
+      return res.status(403).json({ error: 'Access denied: Directory traversal attempt detected' });
+    }
+    
+    if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    const fileContent = fs.readFileSync(targetPath, 'utf8');
+    const parsed = matter(fileContent);
+    
+    res.json({
+      frontmatter: parsed.data,
+      content: parsed.content
+    });
+  } catch (error) {
+    console.error('Error reading admin doc content:', error);
+    res.status(500).json({ error: error.message || 'Failed to read document' });
   }
 });
 

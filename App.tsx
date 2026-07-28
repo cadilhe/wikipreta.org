@@ -13,6 +13,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminBannedTerms from './pages/AdminBannedTerms';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NewsFeedPage from './pages/NewsFeedPage';
+import AdminDocsPage from './pages/AdminDocsPage';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -853,6 +854,7 @@ const App: React.FC = () => {
           <Route path="/admin/imagens" element={<ProtectedRoute><AdminImages /></ProtectedRoute>} />
           <Route path="/admin/banidos" element={<ProtectedRoute allowedRoles={['admin']}><AdminBannedTerms /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+          <Route path="/admin/docs" element={<ProtectedRoute allowedRoles={['admin']}><AdminDocsPage /></ProtectedRoute>} />
           <Route path="/noticias" element={<NewsFeedPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>

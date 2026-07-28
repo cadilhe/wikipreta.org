@@ -10,7 +10,7 @@
 | Objetivo | Arquivo |
 |---|---|
 | Entender o produto e sua visão | [prd/PRD.md](./prd/PRD.md) |
-| Configurar o ambiente de desenvolvimento | [SETUP_GUIDE.md](./SETUP_GUIDE.md) |
+| Configurar o ambiente de desenvolvimento | [SETUP_GUIDE.md](../help-docs/SETUP_GUIDE.md) |
 | Entender regras de código | [rules/CODING_RULES.md](./rules/CODING_RULES.md) |
 | Entender a pipeline de geração por IA | [architecture/AI_PIPELINE.md](./architecture/AI_PIPELINE.md) |
 | Entender o schema do banco | [architecture/DATABASE_SCHEMA.md](./architecture/DATABASE_SCHEMA.md) |
@@ -24,10 +24,10 @@
 ```
 docs/
 ├── INDEX.md                         ← Este arquivo
-├── SETUP_GUIDE.md                   ← Onboarding do desenvolvedor
 │
 ├── prd/
 │   └── PRD.md                       ← Visão, personas, funcionalidades, roadmap
+```,StartLine:13,TargetContent:
 │
 ├── rules/
 │   ├── CODING_RULES.md              ← Stack, padrões, convenções, segurança
