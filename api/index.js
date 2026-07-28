@@ -1342,12 +1342,13 @@ app.get('/api/admin/docs/content', requireSupabaseAuth, requireAdmin, (req, res)
     const targetPath = path.resolve(rootDir, requestedPath);
     
     // 🔒 SEGURANÇA [VULN-BAC / Directory Traversal]: Nega acesso caso o caminho esteja fora de docs ou help-docs
-    // Usamos path.relative para ser imune a discrepâncias de caminhos e symlinks no ambiente online (ex: Vercel)
-    const relativeToDocs = path.relative(docsDir, targetPath);
-    const relativeToHelp = path.relative(helpDocsDir, targetPath);
+    // Normalizamos os caminhos para minúsculas com barras normais (/) para sermos imunes a diferenças de drive (Windows) e separadores
+    const targetLower = targetPath.toLowerCase().split(path.sep).join('/');
+    const docsLower = docsDir.toLowerCase().split(path.sep).join('/');
+    const helpLower = helpDocsDir.toLowerCase().split(path.sep).join('/');
     
-    const isInDocs = !relativeToDocs.startsWith('..') && !path.isAbsolute(relativeToDocs);
-    const isInHelpDocs = !relativeToHelp.startsWith('..') && !path.isAbsolute(relativeToHelp);
+    const isInDocs = targetLower === docsLower || targetLower.startsWith(docsLower + '/');
+    const isInHelpDocs = targetLower === helpLower || targetLower.startsWith(helpLower + '/');
     if (!isInDocs && !isInHelpDocs) {
       return res.status(403).json({ error: 'Access denied: Directory traversal attempt detected' });
     }
