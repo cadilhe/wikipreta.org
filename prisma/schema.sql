@@ -45,3 +45,15 @@ CREATE TABLE IF NOT EXISTS banned_terms (
 
 CREATE INDEX IF NOT EXISTS idx_banned_terms_term ON banned_terms(term);
 
+-- News feeds table: feeds RSS dinâmicos no SQLite local
+CREATE TABLE IF NOT EXISTS news_feeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  url TEXT UNIQUE NOT NULL,
+  active INTEGER DEFAULT 1, -- 1 = ativo, 0 = inativo
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_feeds_url ON news_feeds(url);
+
+

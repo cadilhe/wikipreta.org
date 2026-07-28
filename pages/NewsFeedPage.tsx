@@ -4,13 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { getNews, syncNews, ingestNewsToKB, NewsArticle } from '../services/databaseService';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 
-const SOURCES = ['Todos', 'Guia Negro', 'Mundo Negro', 'Alma Preta', 'Geledés', 'Notícia Preta'];
-
 const NewsFeedPage: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [sources, setSources] = useState<string[]>(['Todos', 'Guia Negro', 'Mundo Negro', 'Alma Preta', 'Geledés', 'Notícia Preta']);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [ingesting, setIngesting] = useState<boolean>(false);
@@ -61,8 +60,12 @@ const NewsFeedPage: React.FC = () => {
       setArticles(data.articles);
       setTotalPages(data.pagination.pages || 1);
       setTotalItems(data.pagination.total || 0);
-    } catch (error) {
-      console.error('Error fetching news:', error);
+      if (data.sources) {
+        const uniqueSources = Array.from(new Set(['Todos', ...data.sources]));
+        setSources(uniqueSources);
+      }
+    } catch (err) {
+      console.error('Error in fetchNews:', err);
       setFeedback({ type: 'error', message: 'Falha ao carregar as notícias. Tente novamente mais tarde.' });
     } finally {
       setLoading(false);
@@ -212,7 +215,7 @@ const NewsFeedPage: React.FC = () => {
 
         {/* Feed Source Filter Chips */}
         <div className="flex flex-wrap gap-2 mb-8 justify-center">
-          {SOURCES.map((src) => {
+          {sources.map((src) => {
             const isSelected = source === src;
             return (
               <button

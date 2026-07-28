@@ -14,6 +14,7 @@ import AdminBannedTerms from './pages/AdminBannedTerms';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NewsFeedPage from './pages/NewsFeedPage';
 import AdminDocsPage from './pages/AdminDocsPage';
+import AdminNewsFeeds from './pages/AdminNewsFeeds';
 import { generateImageForTopic, generateTopicContent } from './services/geminiService';
 
 
@@ -855,6 +856,7 @@ const App: React.FC = () => {
           <Route path="/admin/banidos" element={<ProtectedRoute allowedRoles={['admin']}><AdminBannedTerms /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/docs" element={<ProtectedRoute allowedRoles={['admin']}><AdminDocsPage /></ProtectedRoute>} />
+          <Route path="/admin/feeds" element={<ProtectedRoute allowedRoles={['admin']}><AdminNewsFeeds /></ProtectedRoute>} />
           <Route path="/noticias" element={<NewsFeedPage />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>

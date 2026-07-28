@@ -1437,14 +1437,6 @@ app.delete('/api/admin/images/:name', requireSupabaseAuth, async (req, res) => {
 
 // ============= News & RSS Feed Endpoints =============
 
-const NEWS_SOURCES = [
-  { name: 'Guia Negro', url: 'https://guianegro.com.br/feed/' },
-  { name: 'Mundo Negro', url: 'https://mundonegro.inf.br/feed/' },
-  { name: 'Alma Preta', url: 'https://almapreta.com.br/feed/' },
-  { name: 'Geledés', url: 'https://www.geledes.org.br/feed/' },
-  { name: 'Notícia Preta', url: 'https://noticiapreta.com.br/feed/' }
-];
-
 function parseRSS(xmlText, sourceName) {
   const items = [];
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g;
@@ -1509,8 +1501,28 @@ function parseRSS(xmlText, sourceName) {
 
 async function syncFeeds() {
   const allArticles = [];
+  let feeds = [];
   
-  for (const source of NEWS_SOURCES) {
+  try {
+    const { data, error } = await supabase
+      .from('news_feeds')
+      .select('name, url')
+      .eq('active', true);
+      
+    if (error) throw error;
+    feeds = data || [];
+  } catch (err) {
+    console.error('Error fetching dynamic news feeds from database:', err.message);
+    feeds = [
+      { name: 'Guia Negro', url: 'https://guianegro.com.br/feed/' },
+      { name: 'Mundo Negro', url: 'https://mundonegro.inf.br/feed/' },
+      { name: 'Alma Preta', url: 'https://almapreta.com.br/feed/' },
+      { name: 'Geledés', url: 'https://www.geledes.org.br/feed/' },
+      { name: 'Notícia Preta', url: 'https://noticiapreta.com.br/feed/' }
+    ];
+  }
+  
+  for (const source of feeds) {
     try {
       console.log(`Fetching feed from ${source.name}: ${source.url}`);
       const response = await fetch(source.url, {
@@ -1603,8 +1615,26 @@ app.get('/api/news', async (req, res) => {
 
     if (error) throw error;
 
+    // Buscar fontes dinâmicas de feeds ativos para chips do frontend
+    let sources = ['Todos'];
+    try {
+      const { data: activeFeeds } = await supabase
+        .from('news_feeds')
+        .select('name')
+        .eq('active', true);
+      
+      if (activeFeeds && activeFeeds.length > 0) {
+        sources = ['Todos', ...activeFeeds.map(f => f.name)];
+      } else {
+        sources = ['Todos', 'Guia Negro', 'Mundo Negro', 'Alma Preta', 'Geledés', 'Notícia Preta'];
+      }
+    } catch (e) {
+      sources = ['Todos', 'Guia Negro', 'Mundo Negro', 'Alma Preta', 'Geledés', 'Notícia Preta'];
+    }
+
     return res.json({
       articles,
+      sources,
       pagination: {
         page,
         limit,
@@ -1695,6 +1725,91 @@ app.post('/api/news/ingest', requireSupabaseAuth, requireAdminOrEditor, async (r
   } catch (error) {
     console.error('RAG ingestion error:', error);
     return res.status(500).json({ error: error.message || 'Failed to ingest news to RAG' });
+  }
+});
+
+// ============= Admin News Feeds Endpoints =============
+
+// GET /api/admin/news-feeds - Lista todos os feeds
+app.get('/api/admin/news-feeds', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { data: feeds, error } = await supabase
+      .from('news_feeds')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return res.json(feeds || []);
+  } catch (error) {
+    console.error('Error fetching admin news feeds:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch news feeds' });
+  }
+});
+
+// POST /api/admin/news-feeds - Cria um novo feed
+app.post('/api/admin/news-feeds', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, url, active } = req.body;
+    if (!name || !url) {
+      return res.status(400).json({ error: 'Nome e URL do feed são obrigatórios.' });
+    }
+
+    const { data: newFeed, error } = await supabase
+      .from('news_feeds')
+      .insert([{ 
+        name, 
+        url, 
+        active: active !== undefined ? active : true 
+      }])
+      .select();
+
+    if (error) throw error;
+    return res.status(201).json(newFeed[0]);
+  } catch (error) {
+    console.error('Error creating news feed:', error);
+    return res.status(500).json({ error: error.message || 'Failed to create news feed' });
+  }
+});
+
+// PUT /api/admin/news-feeds/:id - Atualiza um feed existente
+app.put('/api/admin/news-feeds/:id', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, url, active } = req.body;
+
+    const { data: updatedFeed, error } = await supabase
+      .from('news_feeds')
+      .update({ name, url, active })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    if (!updatedFeed || updatedFeed.length === 0) {
+      return res.status(404).json({ error: 'Feed não encontrado.' });
+    }
+
+    return res.json(updatedFeed[0]);
+  } catch (error) {
+    console.error('Error updating news feed:', error);
+    return res.status(500).json({ error: error.message || 'Failed to update news feed' });
+  }
+});
+
+// DELETE /api/admin/news-feeds/:id - Remove um feed
+app.delete('/api/admin/news-feeds/:id', requireSupabaseAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('news_feeds')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return res.json({ message: 'Feed excluído com sucesso.' });
+  } catch (error) {
+    console.error('Error deleting news feed:', error);
+    return res.status(500).json({ error: error.message || 'Failed to delete news feed' });
   }
 });
 

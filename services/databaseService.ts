@@ -424,6 +424,7 @@ export interface NewsArticle {
 
 export interface NewsResponse {
   articles: NewsArticle[];
+  sources?: string[];
   pagination: {
     page: number;
     limit: number;
