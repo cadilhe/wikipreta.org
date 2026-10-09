@@ -9,8 +9,8 @@ Wikipreta.org é uma enciclopédia interativa e colaborativa dedicada à preserv
 - **Banco de Dados**: Supabase (PostgreSQL).
 - **Autenticação**: Supabase Auth (Integrado ao dashboard de edição).
 - **IA Generativa**: 
-  - **Texto**: DeepSeek (Principal) com fallback para Gemini 1.5 Flash.
-  - **Imagens**: Pool de imagens randômicas locais + suporte a URLs customizadas.
+  - **Texto**: Anthropic Claude, DeepSeek, Google Gemini e Ollama (com seleção de modelos configurável via `.env.local`).
+  - **Imagens**: Pool de imagens randômicas locais + suporte a URLs customizadas e Google Imagen.
 
 ## 🛠️ Configuração Local
 
@@ -20,18 +20,37 @@ Wikipreta.org é uma enciclopédia interativa e colaborativa dedicada à preserv
 
 ### 1. Instalação
 ```bash
-npm install
-# ou
 pnpm install
+# ou
+npm install
 ```
 
 ### 2. Variáveis de Ambiente
-Crie um arquivo `.env.local` na raiz com as seguintes chaves:
+Crie um arquivo `.env.local` na raiz com as seguintes chaves (você pode customizar os modelos de cada IA):
 
 ```env
-# AI Providers
+# Provedor preferencial opcional ('anthropic', 'deepseek', 'gemini' ou 'ollama')
+PRIMARY_AI_PROVIDER=
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=sua_chave_anthropic
+ANTHROPIC_MODEL=claude-3-5-haiku-20241022
+
+# DeepSeek
 DEEPSEEK_API_KEY=sua_chave_deepseek
+DEEPSEEK_MODEL=deepseek-chat
+
+# Google Gemini
 GEMINI_API_KEY=sua_chave_gemini
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_EMBED_MODEL=text-embedding-004
+GEMINI_IMAGE_MODEL=imagen-3.0-generate-001
+
+# Ollama (Local / VPS)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
+OLLAMA_EMBED_MODEL=nomic-embed-text
+PREFER_OLLAMA=false
 
 # Supabase Configuration
 VITE_SUPABASE_URL=sua_url_supabase

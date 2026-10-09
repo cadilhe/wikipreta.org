@@ -20,16 +20,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 4000;
-const API_KEY = process.env.GEMINI_API_KEY;
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
-console.log('Debug - DeepSeek Key exists:', !!DEEPSEEK_API_KEY);
-if (DEEPSEEK_API_KEY) {
-  console.log('Debug - DeepSeek Key starts with:', DEEPSEEK_API_KEY.substring(0, 4));
-}
+// Provider Selection (Optional: 'anthropic', 'deepseek', 'gemini', 'ollama')
+const PRIMARY_AI_PROVIDER = (process.env.PRIMARY_AI_PROVIDER || '').toLowerCase().trim();
+
+// Anthropic (Claude) Configuration
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
+
+// DeepSeek Configuration
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+
+// Google Gemini Configuration
+const API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || 'text-embedding-004';
+const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'imagen-3.0-generate-001';
+
+// Ollama Configuration
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3';
+const OLLAMA_EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
 const PREFER_OLLAMA = process.env.PREFER_OLLAMA === 'true';
+
+console.log('AI Providers Configured:');
+console.log(` - Anthropic: ${ANTHROPIC_API_KEY && !ANTHROPIC_API_KEY.includes('sua-chave') ? `Enabled (${ANTHROPIC_MODEL})` : 'Disabled'}`);
+console.log(` - DeepSeek: ${DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('sua-chave') ? `Enabled (${DEEPSEEK_MODEL})` : 'Disabled'}`);
+console.log(` - Gemini: ${API_KEY && API_KEY !== 'PLACEHOLDER_API_KEY' ? `Enabled (${GEMINI_MODEL})` : 'Disabled'}`);
+console.log(` - Ollama: ${OLLAMA_URL} (${OLLAMA_MODEL})`);
+if (PRIMARY_AI_PROVIDER) {
+  console.log(` - Primary Provider Preference: ${PRIMARY_AI_PROVIDER}`);
+}
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
 // Remove uploads directory check as we'll use Supabase Storage
@@ -110,8 +132,14 @@ app.get('/api/ping', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
-    hasGemini: !!API_KEY,
-    hasDeepSeek: !!DEEPSEEK_API_KEY
+    hasAnthropic: !!ANTHROPIC_API_KEY && !ANTHROPIC_API_KEY.includes('sua-chave'),
+    anthropicModel: ANTHROPIC_MODEL,
+    hasDeepSeek: !!DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('sua-chave'),
+    deepSeekModel: DEEPSEEK_MODEL,
+    hasGemini: !!API_KEY && API_KEY !== 'PLACEHOLDER_API_KEY',
+    geminiModel: GEMINI_MODEL,
+    ollamaModel: OLLAMA_MODEL,
+    primaryProvider: PRIMARY_AI_PROVIDER || 'auto'
   });
 });
 
@@ -193,14 +221,49 @@ async function updateTopic(slug, data) {
   return updated;
 }
 
-async function generateWithDeepSeek(prompt) {
-  if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY.includes('sua-chave')) {
-    console.log('Skipping DeepSeek: API key missing or placeholder used.');
+async function generateWithAnthropic(prompt) {
+  if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY.includes('sua-chave') || ANTHROPIC_API_KEY.includes('placeholder')) {
     return null;
   }
 
   try {
-    console.log('Using DeepSeek for generation...');
+    console.log(`Using Anthropic (${ANTHROPIC_MODEL}) for generation...`);
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(`Anthropic error (${response.status}): ${errData.error?.message || response.statusText}`);
+    }
+    const data = await response.json();
+    if (data.content && data.content[0] && data.content[0].text) {
+      return data.content[0].text.trim();
+    }
+    return null;
+  } catch (error) {
+    console.error('Anthropic generation failed:', error.message || error);
+    return null;
+  }
+}
+
+async function generateWithDeepSeek(prompt) {
+  if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY.includes('sua-chave') || DEEPSEEK_API_KEY.includes('placeholder')) {
+    return null;
+  }
+
+  try {
+    console.log(`Using DeepSeek (${DEEPSEEK_MODEL}) for generation...`);
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -208,7 +271,7 @@ async function generateWithDeepSeek(prompt) {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: DEEPSEEK_MODEL,
         messages: [{ role: 'user', content: prompt }],
         stream: false
       })
@@ -216,15 +279,30 @@ async function generateWithDeepSeek(prompt) {
 
     if (!response.ok) throw new Error(`DeepSeek error: ${response.statusText}`);
     const data = await response.json();
-    return data.choices[0].message.content;
+    return data.choices[0].message.content.trim();
   } catch (error) {
-    console.error('DeepSeek generation failed:', error);
+    console.error('DeepSeek generation failed:', error.message || error);
+    return null;
+  }
+}
+
+async function generateWithGemini(prompt) {
+  if (!ai || !API_KEY || API_KEY === 'PLACEHOLDER_API_KEY') return null;
+
+  try {
+    console.log(`Using Gemini (${GEMINI_MODEL}) for generation...`);
+    const model = ai.getGenerativeModel({ model: GEMINI_MODEL });
+    const response = await model.generateContent(prompt);
+    return response.response.text().trim();
+  } catch (err) {
+    console.error('Gemini generation failed:', err.message || err);
     return null;
   }
 }
 
 async function generateWithOllama(prompt) {
   try {
+    console.log(`Using Ollama (${OLLAMA_MODEL}) for generation...`);
     const response = await fetch(`${OLLAMA_URL}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,11 +314,50 @@ async function generateWithOllama(prompt) {
     });
     if (!response.ok) throw new Error(`Ollama error: ${response.statusText}`);
     const data = await response.json();
-    return data.response;
+    return data.response ? data.response.trim() : null;
   } catch (error) {
-    console.error('Ollama generation failed:', error);
+    console.error('Ollama generation failed:', error.message || error);
     return null;
   }
+}
+
+/**
+ * Unified generation pipeline respecting primary provider and fallback order
+ */
+async function generateWithConfiguredAI(prompt) {
+  const providers = [];
+
+  // 1. Explicit primary provider preference if set
+  if (PRIMARY_AI_PROVIDER === 'anthropic') providers.push('anthropic');
+  else if (PRIMARY_AI_PROVIDER === 'deepseek') providers.push('deepseek');
+  else if (PRIMARY_AI_PROVIDER === 'gemini') providers.push('gemini');
+  else if (PRIMARY_AI_PROVIDER === 'ollama') providers.push('ollama');
+
+  // 2. Add remaining providers in default priority order
+  if (PREFER_OLLAMA && !providers.includes('ollama')) providers.unshift('ollama');
+  if (!providers.includes('anthropic') && ANTHROPIC_API_KEY && !ANTHROPIC_API_KEY.includes('sua-chave')) providers.push('anthropic');
+  if (!providers.includes('deepseek') && DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('sua-chave')) providers.push('deepseek');
+  if (!providers.includes('gemini') && ai && API_KEY !== 'PLACEHOLDER_API_KEY') providers.push('gemini');
+  if (!providers.includes('ollama')) providers.push('ollama');
+
+  for (const provider of providers) {
+    let text = null;
+    if (provider === 'anthropic') {
+      text = await generateWithAnthropic(prompt);
+      if (text) return { text, source: 'anthropic' };
+    } else if (provider === 'deepseek') {
+      text = await generateWithDeepSeek(prompt);
+      if (text) return { text, source: 'deepseek' };
+    } else if (provider === 'gemini') {
+      text = await generateWithGemini(prompt);
+      if (text) return { text, source: 'gemini' };
+    } else if (provider === 'ollama') {
+      text = await generateWithOllama(prompt);
+      if (text) return { text, source: 'ollama' };
+    }
+  }
+
+  return { text: null, source: 'unknown' };
 }
 
 function getLevenshteinDistance(s, t) {
@@ -278,28 +395,7 @@ async function validateTopicWithAI(topic) {
   }
   Mande apenas o JSON cru, sem tags de bloco de código markdown ou texto explicativo extra.`;
 
-  let responseText = null;
-
-  // 1. Try DeepSeek first
-  responseText = await generateWithDeepSeek(prompt);
-
-  // 2. Try Gemini backup
-  if (!responseText && ai) {
-    try {
-      console.log('Using Gemini for term validation...');
-      const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const response = await model.generateContent(prompt);
-      responseText = response.response.text().trim();
-    } catch (err) {
-      console.error('Gemini validation fallback failed:', err.message);
-    }
-  }
-
-  // 3. Try Ollama backup
-  if (!responseText) {
-    console.log('Using Ollama for term validation...');
-    responseText = await generateWithOllama(prompt);
-  }
+  const { text: responseText } = await generateWithConfiguredAI(prompt);
 
   if (!responseText) {
     console.log('No AI provider available for validation, defaulting to valid');
@@ -326,17 +422,15 @@ async function validateTopicWithAI(topic) {
   }
 }
 
-
-
 async function getEmbedding384(text) {
   const OLLAMA_LOCAL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
   
-  // 1. Tenta Ollama local nomic-embed-text primeiro
+  // 1. Tenta Ollama local primeiro com OLLAMA_EMBED_MODEL configurável
   try {
     const res = await fetch(`${OLLAMA_LOCAL}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'nomic-embed-text', prompt: text })
+      body: JSON.stringify({ model: OLLAMA_EMBED_MODEL, prompt: text })
     });
     if (res.ok) {
       const data = await res.json();
@@ -345,7 +439,7 @@ async function getEmbedding384(text) {
       const res2 = await fetch(`${OLLAMA_LOCAL}/api/embed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'nomic-embed-text', input: text })
+        body: JSON.stringify({ model: OLLAMA_EMBED_MODEL, input: text })
       });
       if (res2.ok) {
         const data = await res2.json();
@@ -356,11 +450,11 @@ async function getEmbedding384(text) {
     console.log('Ollama embedding falhou, tentando fallback para Gemini...', e.message);
   }
 
-  // 2. Tenta fallback para Gemini API text-embedding-004 com 384 dimensões
+  // 2. Tenta fallback para Gemini API com GEMINI_EMBED_MODEL configurável e 384 dimensões
   if (ai) {
     try {
-      console.log('Gerando embedding de 384 dimensões na API do Gemini...');
-      const model = ai.getGenerativeModel({ model: 'text-embedding-004' });
+      console.log(`Gerando embedding de 384 dimensões na API do Gemini (${GEMINI_EMBED_MODEL})...`);
+      const model = ai.getGenerativeModel({ model: GEMINI_EMBED_MODEL });
       const result = await model.embedContent({
         content: text,
         outputDimensionality: 384
@@ -587,7 +681,9 @@ app.post('/api/gemini/content', async (req, res) => {
   // 1. Busca contexto nos documentos próprios (RAG)
   const knowledgeContext = await getContextFromKnowledge(topic);
 
-  if (!ai && !DEEPSEEK_API_KEY && !PREFER_OLLAMA) return res.status(500).json({ error: 'AI client not initialized' });
+  if (!ai && !DEEPSEEK_API_KEY && !ANTHROPIC_API_KEY && !PREFER_OLLAMA) {
+    return res.status(500).json({ error: 'Nenhum provedor de IA configurado ou inicializado' });
+  }
 
   // 2. Constrói o prompt priorizando as fontes oficiais
   const prompt = knowledgeContext
@@ -604,38 +700,7 @@ app.post('/api/gemini/content', async (req, res) => {
     : `Forneça uma biografia ou descrição enciclopédica concisa, em um único parágrafo, sobre "${topic}" no contexto da história e cultura negra do Brasil, da África ou da diáspora. O texto deve ser informativo, direto e respeitoso. Destaque outras personalidades, lugares ou conceitos relevantes envolvendo-os com dois asteriscos (ex: **Zumbi dos Palmares** ou **Quilombo**). Não inclua o nome do tópico no início do parágrafo.`;
 
   try {
-    let generatedText = null;
-    let source = 'unknown';
-
-    // 1. Try DeepSeek first (Primary)
-    if (!generatedText) {
-      generatedText = await generateWithDeepSeek(prompt);
-      if (generatedText) {
-        source = 'deepseek';
-        console.log('Successfully generated with DeepSeek');
-      }
-    }
-
-    // 2. Try Gemini as backup
-    if (!generatedText && ai) {
-      try {
-        console.log('Using Gemini (1.5 Flash) as backup...');
-        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const response = await model.generateContent(prompt);
-        generatedText = response.response.text().trim();
-        source = 'gemini';
-        console.log('Successfully generated with Gemini');
-      } catch (geminiError) {
-        console.error('Gemini fallback failed:', geminiError.message);
-      }
-    }
-
-    // 3. Fallback to Ollama if others failed
-    if (!generatedText) {
-      console.log('Using Ollama as final fallback...');
-      generatedText = await generateWithOllama(prompt);
-      if (generatedText) source = 'ollama';
-    }
+    const { text: generatedText, source } = await generateWithConfiguredAI(prompt);
 
     if (!generatedText) {
       return res.status(500).json({ error: 'Failed to generate content from any provider' });
@@ -703,7 +768,7 @@ app.post('/api/gemini/image', requireSupabaseAuth, async (req, res) => {
 
   try {
     const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-001',
+      model: GEMINI_IMAGE_MODEL,
       prompt,
       config: {
         numberOfImages: 1,
