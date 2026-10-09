@@ -1,34 +1,60 @@
-# 📣 Sugestões de Divulgação: WikiPreta.org
+# 📣 Guia de Divulgação: WikiPreta.org 🏿✨
 
-Aqui estão algumas opções de copy para você usar nas redes sociais. Sinta-se à vontade para ajustar o tom conforme seu público!
+Modelos de mensagens e copies prontos para uso em diferentes canais e públicos (redes sociais, mensagens diretas, parcerias institucionais e editoras).
 
 ---
 
-## 🟢 Opção 1: WhatsApp (Direto e Informativo)
+## 🟢 1. WhatsApp — Editoras, Acadêmicos e Instituições
 
-*Sugestão: Enviar em grupos de educação, cultura ou movimentos sociais.*
+*Sugestão: Apresentação para editoras, coletivos editoriais, bibliotecas, centros de pesquisa e universidades.*
+
+---
+
+Olá! Gostaria de compartilhar com você o projeto da *Wikipreta.org* 🏿✨
+
+*O que é a Wikipreta?*
+A *Wikipreta.org* é uma enciclopédia digital, interativa e colaborativa voltada para a preservação, resgate e disseminação da história, memória e cultura negra.
+
+*Diferenciais de Rigor e Tecnologia:*
+🔹 *Base de Conhecimento RAG (+28.700 Chunks):* Nossa IA não depende de buscas genéricas na internet. Ela é alimentada diretamente por uma base vetorial que reúne obras canônicas como a coleção completa dos *8 Volumes da História Geral da África (UNESCO)*, o *Dicionário da Escravidão e Liberdade* (Schwarcz & Gomes), *Dicionários Antirracistas* e acervos sobre saberes quilombolas e contracoloniais.
+🔹 *Curadoria Humana:* Adotamos o modelo "human-in-the-loop", onde pesquisadores e educadores revisam e aprofundam os verbetes.
+🔹 *Navegação Conectada:* Sistema de hiperlinks automáticos que interliga termos históricos, personalidades e conceitos em uma leitura infinita.
+🔹 *Imprensa Negra em Tempo Real:* Sincronização contínua com 5 portais de notícias (*Geledés, Alma Preta, Mundo Negro, Guia Negro e Notícia Preta*).
+
+*Oportunidades de Parceria:*
+Buscamos diálogo com editoras e pesquisadores para integração de novos catálogos bibliográficos, difusão de autores negros e fortalecimento do acervo digital afro-brasileiro.
+
+👉 *Conheça a plataforma:* https://wikipreta.org
+_Wikipreta.org — Conhecimento que resiste._
+
+---
+
+## 🟢 2. WhatsApp — Comunidades, Grupos de Educação e Movimentos Sociais
+
+*Sugestão: Enviar em grupos de WhatsApp, coletivos culturais, professores e ativistas.*
 
 ---
 
 *Conhecimento que resiste!* 🏿✨
 
-Pessoal, quero compartilhar com vocês a **WikiPreta.org**, uma enciclopédia interativa dedicada exclusivamente à história e cultura negra. 
+Pessoal, quero apresentar a vocês a **WikiPreta.org**, uma enciclopédia interativa dedicada exclusivamente à história e cultura negra.
 
-Diferente de tudo que você já viu, o sistema usa Inteligência Artificial para gerar informações em tempo real sobre figuras históricas, conceitos e movimentos que muitas vezes são esquecidos pelos livros tradicionais.
+Diferente de enciclopédias genéricas, o sistema usa Inteligência Artificial aliada a uma base documental com mais de **28 mil trechos de livros históricos** (incluindo a História Geral da África da UNESCO e dicionários de referência) para resgatar memórias e conceitos muitas vezes silenciados.
 
-🚀 **O que você pode fazer lá:**
-1. Pesquisar sobre qualquer tema da cultura preta.
-2. Descobrir conexões automáticas entre conteúdos.
-3. Contribuir como curador (se quiser ajudar a revisar e melhorar os textos!).
+🚀 **O que você encontra lá:**
+1. **Verbetes Instantâneos & Conectados:** Pesquise qualquer tema, personalidade ou movimento da cultura preta.
+2. **Navegação Infinita:** Palavras em negrito viram links para novos temas.
+3. **Feed de Notícias:** Artigos dos portais Alma Preta, Geledés, Mundo Negro, Guia Negro e Notícia Preta.
+4. **Espaço do Curador:** Você pode editar, corrigir e adicionar fontes aos verbetes.
 
-Acesse agora e ajude a fortalecer nossa memória:
+Acesse agora e faça parte da construção da nossa memória:
 👉 **https://wikipreta.org**
 
 ---
 
-## 📸 Opção 2: Instagram (Engajamento e Visual)
+## 📸 3. Instagram — Feed / Carrossel
 
-*Sugestão: Use uma imagem impactante de uma figura histórica ou um print bonito do sistema.*
+*Sugestão: Usar imagem marcante de uma personalidade histórica, infográfico da coleção da UNESCO ou print da interface.*
 
 ---
 
@@ -36,29 +62,74 @@ Acesse agora e ajude a fortalecer nossa memória:
 
 Você já sentiu que falta um lugar centralizado para encontrar a nossa história com a profundidade que ela merece? 🤔🏿
 
-Chegou a **WikiPreta.org**! 🏿✨ Mais que uma enciclopédia, uma ferramenta de resistência tecnológica. 
+Chegou a **WikiPreta.org**! 🏿✨ Mais que uma enciclopédia, uma ferramenta de tecnologia social e resistência. 
 
-Utilizamos o poder da IA para resgatar e organizar o conhecimento ancestral e contemporâneo, sempre com uma camada de curadoria humana para garantir que nossa voz seja ouvida com respeito e precisão. 
+Combinamos inteligência artificial de ponta a um banco de conhecimento com mais de **28.700 fragmentos de obras fundamentais** — incluindo a coleção completa da História Geral da África (UNESCO), dicionários de referência e a imprensa negra contemporânea — sempre com curadoria humana para assegurar rigor e respeito à nossa ancestralidade.
 
 O que você vai encontrar:
-✅ Verbetes gerados em tempo real.
-✅ Navegação inteligente e intuitiva.
-✅ Um espaço para você ser curador da nossa história.
+✅ Verbetes gerados em tempo real com embasamento bibliográfico.
+✅ Navegação interconectada entre termos históricos.
+✅ Feed integrado de portais negros (Alma Preta, Geledés, Mundo Negro, Guia Negro, Notícia Preta).
+✅ Um espaço aberto para você ser curador da nossa história.
 
 O conhecimento é a nossa maior arma. Vamos ocupar a rede! ✊🏿
 
 🔗 Link na Bio: **https://wikipreta.org**
 
-#WikiPreta #HistoriaNegra #TecnologiaSocial #CulturaPreta #Ancestralidade #IA #Resistencia
+#WikiPreta #HistoriaNegra #TecnologiaSocial #CulturaPreta #Ancestralidade #IA #RAG #Resistencia #EducacaoAntirracista
 
 ---
 
-## 🤳 Opção 3: Stories (Curto e Curioso)
+## 🤳 4. Instagram / TikTok — Stories e Vídeos Curtos
 
 ---
 
-**Slide 1:** "Você conhece a história de [Insira um nome, ex: Tereza de Benguela] a fundo?" (Enquete: Sim / Quero saber mais)
+**Slide 1:** "Você conhece a história de [Insira um nome, ex: Tereza de Benguela / Lélia Gonzalez / Abdias do Nascimento] a fundo?" *(Enquete: Sim / Quero saber mais)*
 
-**Slide 2:** "Na WikiPreta.org, a gente usa tecnologia de ponta para que nenhuma dessas histórias seja esquecida. 🏿✨"
+**Slide 2:** "Na WikiPreta.org, a gente usa tecnologia de ponta + a coleção da UNESCO e obras históricas para que nenhuma dessas trajetórias seja esquecida. 🏿✨"
 
-**Slide 3:** (Print do site) "Pesquise, aprenda e compartilhe. O link está aqui embaixo!" 🔗 [LINK]
+**Slide 3:** *(Print ou gravação de tela do site navegando pelos verbetes)* "Pesquise, aprenda e compartilhe. O link está aqui embaixo!" 🔗 [LINK: https://wikipreta.org]
+
+---
+
+## 💼 5. LinkedIn — Foco em Tecnologia, Inovação Social e IA Responsável
+
+---
+
+Como podemos usar a Inteligência Artificial para combater o apagamento histórico e o viés algorítmico?
+
+Apresento a **WikiPreta.org** 🏿✨ — uma enciclopédia digital e colaborativa construída com uma arquitetura moderna focada na preservação da memória afro-brasileira e da diáspora.
+
+🔹 **Arquitetura Técnica:**
+- **Stack:** React 19, Express (Node.js), Supabase (PostgreSQL + pgvector).
+- **RAG (Retrieval-Augmented Generation):** Indexação vetorial de mais de 28.700 chunks de obras canônicas (como os 8 volumes da História Geral da África da UNESCO e o Dicionário da Escravidão e Liberdade) para fundamentar as respostas dos LLMs (DeepSeek / Gemini).
+- **Human-in-the-Loop:** Plataforma colaborativa onde pesquisadores e educadores realizam a curadoria contínua dos conteúdos.
+- **Ingestão em Tempo Real:** Conexão contínua com os principais veículos de jornalismo negro nacional via feeds RSS.
+
+A tecnologia precisa refletir nossa pluralidade e honrar nossas raízes.
+
+Acesse o projeto e contribua: https://wikipreta.org
+
+#TecnologiaSocial #ArtificialIntelligence #RAG #OpenSource #Diversidade #InovacaoSocial #IAEducacional
+
+---
+
+## 🧵 6. Threads / X (Twitter) — Fio Rápido
+
+---
+
+**Tweet 1:**
+Apresentando a @WikiPretaOrg: uma enciclopédia interativa dedicada à história e cultura negra que usa IA + uma base de dados de mais de 28 mil fragmentos de livros históricos e da UNESCO. 🏿✨🧶 (1/4)
+https://wikipreta.org
+
+**Tweet 2:**
+Como funciona? Você pesquisa qualquer termo e o sistema gera o verbete em tempo real, consultando nossa base de conhecimento vetorial (RAG) para garantir precisão histórica e evitar alucinações. (2/4)
+
+**Tweet 3:**
+Além disso:
+🔗 Qualquer palavra em negrito vira link automático para outro verbete
+📰 Feed integrado com Alma Preta, Geledés, Mundo Negro, Guia Negro e Notícia Preta
+✍️ Modo curador para revisar e adicionar fontes (3/4)
+
+**Tweet 4:**
+Conhecimento que resiste. Acesse, pesquise e compartilhe: https://wikipreta.org ✊🏿 (4/4)

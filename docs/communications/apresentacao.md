@@ -15,7 +15,20 @@ A WikiPreta não é apenas um repositório estático; é um ecossistema vivo de 
 - **Conexões Automáticas**: Ao ler um verbete, você verá termos em destaque que levam a outros conhecimentos, criando uma teia de aprendizado orgânica.
 
 ### 🚀 Por que usar a WikiPreta?
-Diferente de enciclopédias genéricas, aqui o foco é a **ancestralidade e a representatividade**. Cada linha é pensada para dar visibilidade ao que muitas vezes foi silenciado pela história tradicional.
+Diferente de enciclopédias genéricas, aqui o foco é a **ancestralidade, o rigor histórico e a representatividade**. Cada linha é pensada para dar visibilidade ao que muitas vezes foi silenciado pela história tradicional.
+
+---
+
+## 📚 Base de Conhecimento RAG: Rigor Histórico e Contemporâneo
+
+Para que a Inteligência Artificial não dependa de dados genéricos da internet, a WikiPreta conta com uma infraestrutura de **RAG (Retrieval-Augmented Generation)** vetorial com mais de **28.700 fragmentos de conhecimento indexados**:
+
+- **Coleção UNESCO Completa**: Os 8 volumes da *História Geral da África*.
+- **Obras Canônicas & Dicionários**: *Dicionário da Escravidão e Liberdade* (Lilia Schwarcz e Flávio Gomes), *Dicionário dos Movimentos Sociais*, *Pensamento Contracolonial* e obras de combate ao racismo estrutural.
+- **Memória Quilombola & Oralidade**: Documentos sobre saberes tradicionais, maternidades quilombolas e cultura da diáspora.
+- **Imprensa Negra em Tempo Real**: Conexão com os 5 maiores portais (*Alma Preta, Geledés, Mundo Negro, Guia Negro e Notícia Preta*).
+
+Quando a IA gera um novo verbete, ela primeiro consulta essas fontes canônicas, garantindo respostas fundamentadas e livres de alucinações.
 
 ---
 
@@ -25,7 +38,7 @@ Como curador, você é o guardião da verdade e da sensibilidade histórica na p
 
 ### 🧠 O Conceito "Human-in-the-Loop"
 A WikiPreta utiliza a IA como um **copiloto**, não como um substituto. 
-1. **A IA propõe**: Gera o rascunho inicial do verbete usando modelos avançados (DeepSeek/Gemini).
+1. **A IA propõe fundamentada**: Busca dados no banco vetorial de 28k+ chunks e gera o rascunho inicial do verbete usando modelos avançados (DeepSeek/Gemini).
 2. **O Curador refina**: Você revisa, corrige nuances, adiciona fontes e garante que o tom seja adequado e respeitoso.
 
 ### 🎨 Suas Ferramentas de Edição:

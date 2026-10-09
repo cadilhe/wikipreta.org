@@ -68,17 +68,29 @@ Exemplo: "Menina da Bahia" e "Menina Bahia" levam ao mesmo registro `menina-bahi
 ### Edição e Curadoria
 Usuários logados podem editar textos e URLs de imagem através do editor integrado, que possui uma barra de ferramentas para formatação rápida. **Todo texto em negrito (`**termo**`) torna-se automaticamente um link para outro verbete.**
 
-### Feed de Notícias Pretas & RAG
-O sistema possui uma aba dedicada a notícias que consome feeds RSS de 5 portais da cultura negra (*Guia Negro*, *Mundo Negro*, *Alma Preta*, *Geledés* e *Notícia Preta*):
-1. **Lazy-Sync com Cooldown (6h)**: Sincroniza notícias de forma assíncrona ao acessar a página se o cache do banco tiver mais de 6 horas, ou sob demanda por um botão no painel de administração.
-2. **Integração RAG (Knowledge Base)**: Editores podem indexar as notícias no banco vetorial da Wikipreta. O sistema gera automaticamente embeddings de **384 dimensões** utilizando o Ollama local (`nomic-embed-text`) ou a API do Gemini (`text-embedding-004` com limite de 384d) em produção. As notícias passam a servir de contexto para a geração de verbetes pelo motor principal (**DeepSeek**).
+### Base de Conhecimento RAG (Retrieval-Augmented Generation) & Notícias
+A inteligência artificial da Wikipreta é ancorada em uma sólida base documental vetorial (*pgvector* com embeddings de 384 dimensões via Ollama `nomic-embed-text` ou Gemini `text-embedding-004`):
+
+1. **Acervo Bibliográfico e Histórico (+28.700 Chunks Indexados)**:
+   - **História Geral da África (UNESCO)**: Todos os 8 volumes canônicos completos indexados.
+   - **Dicionários e Obras de Referência**: *Dicionário da Escravidão e Liberdade* (Lilia Schwarcz e Flávio Gomes), *Dicionário Histórico dos Movimentos Sociais Brasileiros*, *Glossário do Pensamento Contracolonial*, e múltiplos dicionários e cartilhas antirracistas.
+   - **Educação e Sociedade**: Obras sobre saberes quilombolas, racismo institucional, histórias do negro no Brasil, artefatos culturais e diáspora africana.
+   - **Pipeline de Ingestão**: Scripts de fragmentação e vetorização automatizada em `api/scripts/ingest.js` (veja [`help-docs/MANUAL_RAG.md`](file:///d:/projects/cadilhe/wikipreta.org/help-docs/MANUAL_RAG.md)).
+
+2. **Feed de Notícias Pretas & Atualidade em Tempo Real**:
+   - Integração com 5 portais da imprensa negra (*Guia Negro*, *Mundo Negro*, *Alma Preta*, *Geledés* e *Notícia Preta*).
+   - *Lazy-Sync com Cooldown (6h)* ou sincronização sob demanda.
+   - Possibilidade de indexar notícias no RAG para conectar fatos contemporâneos aos verbetes históricos gerados pelo motor principal (**DeepSeek**).
 
 ## 📂 Estrutura de Pastas
 - `/api`: API Express e lógica de integração com IAs, moderação e banco de dados.
+  - `/api/data/fontes`: Repositório de fontes documentais e livros em PDF para o RAG.
+  - `/api/scripts`: Utilitários de ingestão de conhecimento e vetorização.
 - `/services`: Clientes de banco de dados e comunicação com a API.
 - `/public/assets/images/random`: Repositório de imagens culturais para exibição randômica.
 - `/components`: Componentes React (SearchBar, ContentDisplay, etc).
 - `/pages`: Telas e páginas completas da aplicação (Dashboard, Feed de Notícias, etc).
+- `/help-docs`: Manuais operacionais e de gestão de conhecimento (RAG, etc).
 
 ---
 *Wikipreta.org - Conhecimento que resiste.*
